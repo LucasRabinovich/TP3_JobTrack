@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'package:job_track/screens/forgot_password_screen.dart';
 import 'package:job_track/screens/register_screen.dart';
 import 'package:job_track/screens/home_screen.dart';
@@ -14,11 +15,11 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+
   final AuthService _authService = AuthService();
-  
+
   bool _isLoading = false;
   bool _obscurePassword = true;
-  bool _isCandidate = true;
 
   @override
   void dispose() {
@@ -28,7 +29,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   bool _isValidEmail(String email) {
-    return RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+").hasMatch(email);
+    return RegExp(
+      r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+",
+    ).hasMatch(email);
   }
 
   void _handleLogin() async {
@@ -39,21 +42,33 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor completa todos los campos')),
+        const SnackBar(
+          content: Text(
+            'Por favor completa todos los campos',
+          ),
+        ),
       );
       return;
     }
 
     if (!_isValidEmail(email)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Formato de email inválido')),
+        const SnackBar(
+          content: Text(
+            'Formato de email inválido',
+          ),
+        ),
       );
       return;
     }
 
     if (password.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('La contraseña debe tener al menos 6 caracteres')),
+        const SnackBar(
+          content: Text(
+            'La contraseña debe tener al menos 6 caracteres',
+          ),
+        ),
       );
       return;
     }
@@ -63,17 +78,27 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      await _authService.signInWithEmailAndPassword(email, password);
+      await _authService.signInWithEmailAndPassword(
+        email,
+        password,
+      );
+
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          MaterialPageRoute(
+            builder: (context) => const HomeScreen(),
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Email o contraseña incorrectos')),
+          const SnackBar(
+            content: Text(
+              'Email o contraseña incorrectos',
+            ),
+          ),
         );
       }
     } finally {
@@ -89,14 +114,20 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     const brutalistBorder = OutlineInputBorder(
       borderRadius: BorderRadius.zero,
-      borderSide: BorderSide(color: Colors.black, width: 2.0),
+      borderSide: BorderSide(
+        color: Colors.black,
+        width: 2.0,
+      ),
     );
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F4F4),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 24.0,
+            vertical: 40.0,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -109,7 +140,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   color: Colors.black,
                 ),
               ),
+
               const SizedBox(height: 48),
+
               const Text(
                 'INGRESAR',
                 style: TextStyle(
@@ -119,7 +152,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   color: Colors.black,
                 ),
               ),
+
               const SizedBox(height: 8),
+
               Text(
                 'Inicia sesión en tu cuenta para continuar.',
                 style: TextStyle(
@@ -127,108 +162,31 @@ class _LoginScreenState extends State<LoginScreen> {
                   color: Colors.grey[700],
                 ),
               ),
-              const SizedBox(height: 24),
-              Container(
-                height: 56,
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.black, width: 2.0),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _isCandidate = true),
-                        child: Container(
-                          color: _isCandidate ? const Color(0xFFD4FF00) : const Color(0xFFF4F4F4),
-                          child: Stack(
-                            children: [
-                              if (_isCandidate)
-                                Positioned(
-                                  right: 0,
-                                  top: 0,
-                                  bottom: 0,
-                                  child: Container(width: 2, color: Colors.black),
-                                ),
-                              if (_isCandidate)
-                                Positioned(
-                                  left: 0,
-                                  right: 0,
-                                  bottom: 0,
-                                  child: Container(height: 4, color: Colors.black),
-                                ),
-                              Center(
-                                child: Text(
-                                  'CANDIDATO',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 1.0,
-                                    color: _isCandidate ? Colors.black : Colors.grey[600],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _isCandidate = false),
-                        child: Container(
-                          color: !_isCandidate ? Colors.black : const Color(0xFFF4F4F4),
-                          child: Stack(
-                            children: [
-                              if (!_isCandidate)
-                                Positioned(
-                                  left: 0,
-                                  top: 0,
-                                  bottom: 0,
-                                  child: Container(width: 2, color: Colors.black),
-                                ),
-                              if (!_isCandidate)
-                                Positioned(
-                                  left: 0,
-                                  right: 0,
-                                  bottom: 0,
-                                  child: Container(height: 4, color: Colors.black),
-                                ),
-                              Center(
-                                child: Text(
-                                  'EMPRESA',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 1.0,
-                                    color: !_isCandidate ? Colors.white : Colors.grey[600],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                _isCandidate ? 'EMAIL' : 'EMAIL CORPORATIVO',
-                style: const TextStyle(
+
+              const SizedBox(height: 32),
+
+              const Text(
+                'EMAIL',
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1.0,
                 ),
               ),
+
               const SizedBox(height: 8),
+
               TextField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
-                style: const TextStyle(fontFamily: 'monospace'),
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                ),
                 decoration: const InputDecoration(
                   hintText: 'correo@ejemplo.com',
-                  hintStyle: TextStyle(color: Colors.grey),
+                  hintStyle: TextStyle(
+                    color: Colors.grey,
+                  ),
                   filled: true,
                   fillColor: Colors.white,
                   enabledBorder: brutalistBorder,
@@ -236,7 +194,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   contentPadding: EdgeInsets.all(16),
                 ),
               ),
+
               const SizedBox(height: 24),
+
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -248,12 +208,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       letterSpacing: 1.0,
                     ),
                   ),
+
                   GestureDetector(
                     onTap: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const ForgotPasswordScreen(),
+                          builder: (context) =>
+                              const ForgotPasswordScreen(),
                         ),
                       );
                     },
@@ -267,19 +229,25 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ],
               ),
+
               const SizedBox(height: 8),
+
               TextField(
                 controller: _passwordController,
                 obscureText: _obscurePassword,
                 style: TextStyle(
-                  fontFamily: 'monospace', 
-                  letterSpacing: _obscurePassword ? 4.0 : 1.0
+                  fontFamily: 'monospace',
+                  letterSpacing:
+                      _obscurePassword ? 4.0 : 1.0,
                 ),
                 decoration: InputDecoration(
-                  hintText: _obscurePassword ? '........' : 'Tu contraseña',
+                  hintText: _obscurePassword
+                      ? '........'
+                      : 'Tu contraseña',
                   hintStyle: TextStyle(
-                    color: Colors.grey, 
-                    letterSpacing: _obscurePassword ? 4.0 : 1.0
+                    color: Colors.grey,
+                    letterSpacing:
+                        _obscurePassword ? 4.0 : 1.0,
                   ),
                   filled: true,
                   fillColor: Colors.white,
@@ -289,26 +257,34 @@ class _LoginScreenState extends State<LoginScreen> {
                   suffixIcon: GestureDetector(
                     onTap: () {
                       setState(() {
-                        _obscurePassword = !_obscurePassword;
+                        _obscurePassword =
+                            !_obscurePassword;
                       });
                     },
                     child: Icon(
-                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      _obscurePassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
                       color: Colors.black,
                     ),
                   ),
                 ),
               ),
+
               const SizedBox(height: 40),
+
               GestureDetector(
                 onTap: _handleLogin,
                 child: Container(
                   height: 56,
                   decoration: BoxDecoration(
-                    color: _isLoading 
-                        ? (_isCandidate ? const Color(0xFFAACC00) : Colors.grey[800]) 
-                        : (_isCandidate ? const Color(0xFFD4FF00) : Colors.black),
-                    border: Border.all(color: Colors.black, width: 2.0),
+                    color: _isLoading
+                        ? const Color(0xFFAACC00)
+                        : const Color(0xFFD4FF00),
+                    border: Border.all(
+                      color: Colors.black,
+                      width: 2.0,
+                    ),
                     boxShadow: const [
                       BoxShadow(
                         color: Colors.black,
@@ -319,47 +295,56 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   child: Center(
                     child: _isLoading
-                        ? SizedBox(
+                        ? const SizedBox(
                             height: 24,
                             width: 24,
                             child: CircularProgressIndicator(
-                              color: _isCandidate ? Colors.black : Colors.white,
+                              color: Colors.black,
                               strokeWidth: 3.0,
                             ),
                           )
-                        : Text(
-                            _isCandidate ? 'ENTRAR COMO CANDIDATO' : 'ENTRAR COMO EMPRESA',
+                        : const Text(
+                            'INICIAR SESIÓN',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w900,
                               letterSpacing: 1.0,
-                              color: _isCandidate ? Colors.black : Colors.white,
+                              color: Colors.black,
                             ),
                           ),
                   ),
                 ),
               ),
+
               const SizedBox(height: 32),
+
               Center(
                 child: GestureDetector(
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const RegisterScreen(),
+                        builder: (context) =>
+                            const RegisterScreen(),
                       ),
                     );
                   },
                   child: RichText(
                     text: const TextSpan(
-                      style: TextStyle(color: Colors.black, fontSize: 14),
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 14,
+                      ),
                       children: [
-                        TextSpan(text: '¿No tienes cuenta? '),
+                        TextSpan(
+                          text: '¿No tienes cuenta? ',
+                        ),
                         TextSpan(
                           text: 'Regístrate',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            decoration: TextDecoration.underline,
+                            decoration:
+                                TextDecoration.underline,
                             decorationThickness: 2.0,
                           ),
                         ),
