@@ -1,6 +1,9 @@
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+import 'interview_detail_screen.dart';
 
 class InterviewsScreen extends StatelessWidget {
   const InterviewsScreen({super.key});
@@ -41,10 +44,7 @@ class InterviewsScreen extends StatelessWidget {
       ),
       body: user == null
           ? const Center(
-              child: Text(
-                'INICIÁ SESIÓN PARA VER TUS ENTREVISTAS',
-                textAlign: TextAlign.center,
-              ),
+              child: Text('INICIÁ SESIÓN PARA VER TUS ENTREVISTAS'),
             )
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -59,22 +59,16 @@ class InterviewsScreen extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w900,
-                          letterSpacing: 1,
                         ),
                       ),
                       SizedBox(height: 8),
                       Text(
-                        'Consultá las entrevistas programadas '
-                        'por las empresas.',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.black54,
-                        ),
+                        'Consultá las entrevistas programadas por las empresas.',
+                        style: TextStyle(color: Colors.black54),
                       ),
                     ],
                   ),
                 ),
-
                 Expanded(
                   child: StreamBuilder<
                       QuerySnapshot<Map<String, dynamic>>>(
@@ -84,15 +78,8 @@ class InterviewsScreen extends StatelessWidget {
                         .snapshots(),
                     builder: (context, snapshot) {
                       if (snapshot.hasError) {
-                        return Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Center(
-                            child: Text(
-                              'No se pudieron cargar las entrevistas.\n'
-                              '${snapshot.error}',
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
+                        return const Center(
+                          child: Text('Error al cargar entrevistas'),
                         );
                       }
 
@@ -112,42 +99,166 @@ class InterviewsScreen extends StatelessWidget {
                         final dateB =
                             b.data()['date'] as Timestamp?;
 
-                        final first =
-                            dateA?.toDate() ?? DateTime(2100);
-                        final second =
-                            dateB?.toDate() ?? DateTime(2100);
-
-                        return first.compareTo(second);
+                        return (dateA?.toDate() ?? DateTime(2100))
+                            .compareTo(
+                          dateB?.toDate() ?? DateTime(2100),
+                        );
                       });
 
                       if (interviews.isEmpty) {
-                        return _buildEmptyState();
+                        return const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.event_busy_outlined,
+                                  size: 64,
+                                  color: Colors.black54,
+                                ),
+                                SizedBox(height: 20),
+                                Text(
+                                  'NO TENÉS ENTREVISTAS PROGRAMADAS',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                SizedBox(height: 12),
+                                Text(
+                                  'Cuando una empresa programe una entrevista, aparecerá acá.',
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
                       }
 
                       return ListView.builder(
                         padding: const EdgeInsets.all(20),
                         itemCount: interviews.length,
                         itemBuilder: (context, index) {
-                          final data = interviews[index].data();
+                          final document = interviews[index];
+                          final data = document.data();
 
                           final date =
-                              (data['date'] as Timestamp?)
-                                  ?.toDate();
+                              (data['date'] as Timestamp?)?.toDate();
 
-                          return _buildInterviewCard(
-                            company:
-                                data['company']?.toString() ??
-                                    'Sin empresa',
-                            role:
-                                data['role']?.toString() ??
-                                    'Sin puesto',
-                            date: date,
-                            type:
-                                data['type']?.toString() ??
-                                    'Sin tipo',
-                            platform:
-                                data['platform']?.toString() ??
-                                    'Sin plataforma',
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      InterviewDetailScreen(
+                                    interviewId: document.id,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              margin:
+                                  const EdgeInsets.only(bottom: 16),
+                              padding: const EdgeInsets.all(18),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                border: Border.all(
+                                  color: Colors.black,
+                                  width: 2,
+                                ),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Colors.black,
+                                    offset: Offset(4, 4),
+                                    blurRadius: 0,
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    (data['company'] ?? 'Sin empresa')
+                                        .toString()
+                                        .toUpperCase(),
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    (data['role'] ?? 'Sin puesto')
+                                        .toString(),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.calendar_today,
+                                        size: 18,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Text(
+                                        date == null
+                                            ? 'Sin fecha'
+                                            : _formatDate(date),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.access_time,
+                                        size: 18,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Text(
+                                        date == null
+                                            ? 'Sin hora'
+                                            : _formatTime(date),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 14),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      _buildTag(
+                                        (data['type'] ?? 'Sin tipo')
+                                            .toString(),
+                                      ),
+                                      _buildTag(
+                                        (data['platform'] ??
+                                                'Sin plataforma')
+                                            .toString(),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  const Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        'VER DETALLE',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                      SizedBox(width: 6),
+                                      Icon(Icons.arrow_forward),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
                           );
                         },
                       );
@@ -156,140 +267,6 @@ class InterviewsScreen extends StatelessWidget {
                 ),
               ],
             ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.event_busy_outlined,
-              size: 64,
-              color: Colors.black54,
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'NO TENÉS ENTREVISTAS PROGRAMADAS',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Cuando una empresa programe una entrevista '
-              'con vos, aparecerá acá.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.black54,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInterviewCard({
-    required String company,
-    required String role,
-    required DateTime? date,
-    required String type,
-    required String platform,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(
-          color: Colors.black,
-          width: 2,
-        ),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black,
-            offset: Offset(4, 4),
-            blurRadius: 0,
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            company.toUpperCase(),
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-
-          const SizedBox(height: 6),
-
-          Text(
-            role,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.black54,
-            ),
-          ),
-
-          const SizedBox(height: 18),
-
-          Row(
-            children: [
-              const Icon(
-                Icons.calendar_today_outlined,
-                size: 18,
-              ),
-              const SizedBox(width: 10),
-              Text(
-                date == null
-                    ? 'Fecha no disponible'
-                    : _formatDate(date),
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-
-          Row(
-            children: [
-              const Icon(
-                Icons.access_time,
-                size: 18,
-              ),
-              const SizedBox(width: 10),
-              Text(
-                date == null
-                    ? 'Hora no disponible'
-                    : _formatTime(date),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _buildTag(type),
-              _buildTag(platform),
-            ],
-          ),
-        ],
-      ),
     );
   }
 
