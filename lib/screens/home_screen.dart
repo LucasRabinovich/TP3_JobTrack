@@ -1,12 +1,16 @@
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:job_track/screens/login_screen.dart';
 import 'package:job_track/screens/applications_screen.dart';
 import 'package:job_track/screens/interviews_screen.dart';
+import 'package:job_track/screens/job_offers_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
+
+  static const Color lime = Color(0xFFD4FF00);
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +24,7 @@ class HomeScreen extends StatelessWidget {
             color: Colors.black,
           ),
         ),
-        backgroundColor: const Color(0xFFD4FF00),
+        backgroundColor: lime,
         elevation: 0,
         centerTitle: true,
       ),
@@ -42,30 +46,25 @@ class HomeScreen extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-
               const SizedBox(height: 16),
-
               Text(
-                'Organiza tus postulaciones y realiza el seguimiento '
-                'de tu búsqueda laboral.',
+                'Explorá ofertas laborales y realizá '
+                'el seguimiento de tu búsqueda.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.grey[700],
                 ),
               ),
-
               const SizedBox(height: 40),
 
-              // BOTÓN: POSTULACIONES
               _buildNavigationButton(
-                text: 'VER POSTULACIONES',
+                text: 'EXPLORAR OFERTAS',
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) =>
-                          const ApplicationsScreen(),
+                      builder: (_) => const JobOffersScreen(),
                     ),
                   );
                 },
@@ -73,15 +72,27 @@ class HomeScreen extends StatelessWidget {
 
               const SizedBox(height: 24),
 
-              // BOTÓN: ENTREVISTAS
+              _buildNavigationButton(
+                text: 'VER POSTULACIONES',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ApplicationsScreen(),
+                    ),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 24),
+
               _buildNavigationButton(
                 text: 'VER ENTREVISTAS',
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) =>
-                          const InterviewsScreen(),
+                      builder: (_) => const InterviewsScreen(),
                     ),
                   );
                 },
@@ -89,7 +100,6 @@ class HomeScreen extends StatelessWidget {
 
               const SizedBox(height: 32),
 
-              // BOTÓN: CERRAR SESIÓN
               ElevatedButton(
                 onPressed: () async {
                   await FirebaseAuth.instance.signOut();
@@ -98,8 +108,7 @@ class HomeScreen extends StatelessWidget {
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
-                        builder: (context) =>
-                            const LoginScreen(),
+                        builder: (_) => const LoginScreen(),
                       ),
                     );
                   }
@@ -139,7 +148,7 @@ class HomeScreen extends StatelessWidget {
       child: Container(
         height: 56,
         decoration: BoxDecoration(
-          color: const Color(0xFFD4FF00),
+          color: lime,
           border: Border.all(
             color: Colors.black,
             width: 2,

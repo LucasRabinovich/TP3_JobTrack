@@ -1,18 +1,25 @@
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:job_track/screens/new_application_screen.dart';
-import 'package:job_track/screens/application_detail_screen.dart';
+
+import 'application_detail_screen.dart';
+import 'job_offers_screen.dart';
 
 class ApplicationsScreen extends StatefulWidget {
   const ApplicationsScreen({super.key});
 
   @override
-  State<ApplicationsScreen> createState() => _ApplicationsScreenState();
+  State<ApplicationsScreen> createState() =>
+      _ApplicationsScreenState();
 }
 
 class _ApplicationsScreenState extends State<ApplicationsScreen> {
-  final TextEditingController _searchController = TextEditingController();
+  static const Color lime = Color(0xFFD4FF00);
+  static const Color background = Color(0xFFF4F4F4);
+
+  final TextEditingController _searchController =
+      TextEditingController();
 
   String _selectedStatus = 'TODOS';
 
@@ -28,6 +35,249 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
     });
   }
 
+  void _exploreOffers() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const JobOffersScreen(),
+      ),
+    );
+  }
+
+  Widget _buildFilterButton(String status) {
+    final selected = _selectedStatus == status;
+
+    return GestureDetector(
+      onTap: () => _selectStatus(status),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 10,
+        ),
+        decoration: BoxDecoration(
+          color: selected ? lime : Colors.white,
+          border: Border.all(
+            color: Colors.black,
+            width: 2,
+          ),
+        ),
+        child: Text(
+          status,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState({
+    required bool hasApplications,
+  }) {
+    if (hasApplications) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'NO SE ENCONTRARON POSTULACIONES '
+            'CON LOS FILTROS SELECCIONADOS',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.work_outline,
+              size: 64,
+              color: Colors.black54,
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'TODAVÍA NO TENÉS POSTULACIONES',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Explorá las ofertas publicadas por las '
+              'empresas y postulate a las que te interesen.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.black54,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _exploreOffers,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: lime,
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.zero,
+                  side: BorderSide(
+                    color: Colors.black,
+                    width: 2,
+                  ),
+                ),
+              ),
+              icon: const Icon(Icons.search),
+              label: const Text(
+                'EXPLORAR OFERTAS',
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildApplicationCard({
+    required String applicationId,
+    required Map<String, dynamic> applicationData,
+  }) {
+    final company =
+        (applicationData['company'] ?? 'Sin empresa').toString();
+
+    final role =
+        (applicationData['role'] ?? 'Sin puesto').toString();
+
+    final status =
+        (applicationData['status'] ?? 'SIN ESTADO').toString();
+
+    final modality =
+        (applicationData['modality'] ?? '').toString();
+
+    final salary =
+        (applicationData['salary'] ?? '').toString();
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ApplicationDetailScreen(
+              applicationId: applicationId,
+              applicationData: applicationData,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(
+            color: Colors.black,
+            width: 2,
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black,
+              offset: Offset(4, 4),
+              blurRadius: 0,
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              company.toUpperCase(),
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              role,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.black54,
+              ),
+            ),
+
+            if (modality.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text('Modalidad: $modality'),
+            ],
+
+            if (salary.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text('Salario: $salary'),
+            ],
+
+            const SizedBox(height: 16),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: lime,
+                    border: Border.all(
+                      color: Colors.black,
+                      width: 2,
+                    ),
+                  ),
+                  child: Text(
+                    status.toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                const Row(
+                  children: [
+                    Text(
+                      'VER DETALLE',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(width: 6),
+                    Icon(
+                      Icons.arrow_forward,
+                      size: 20,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -41,9 +291,9 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
     );
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F4F4),
+      backgroundColor: background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFD4FF00),
+        backgroundColor: lime,
         elevation: 0,
         centerTitle: true,
         iconTheme: const IconThemeData(
@@ -71,61 +321,15 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                 letterSpacing: 1,
               ),
             ),
-
             const SizedBox(height: 8),
-
-            Text(
-              'Consulta y organiza tus procesos laborales.',
+            const Text(
+              'Consultá el estado de tus postulaciones '
+              'a las ofertas laborales.',
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey[700],
+                color: Colors.black54,
               ),
             ),
-
-            const SizedBox(height: 24),
-
-            GestureDetector(
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        const NewApplicationScreen(),
-                  ),
-                );
-
-                if (mounted) {
-                  setState(() {});
-                }
-              },
-              child: Container(
-                height: 52,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFD4FF00),
-                  border: Border.all(
-                    color: Colors.black,
-                    width: 2,
-                  ),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black,
-                      offset: Offset(4, 4),
-                      blurRadius: 0,
-                    ),
-                  ],
-                ),
-                child: const Center(
-                  child: Text(
-                    '+ NUEVA POSTULACIÓN',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
             const SizedBox(height: 24),
 
             TextField(
@@ -174,7 +378,8 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                         ),
                       ),
                     )
-                  : StreamBuilder<QuerySnapshot>(
+                  : StreamBuilder<
+                      QuerySnapshot<Map<String, dynamic>>>(
                       stream: FirebaseFirestore.instance
                           .collection('applications')
                           .where(
@@ -183,8 +388,20 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                           )
                           .snapshots(),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
+                        if (snapshot.hasError) {
+                          return Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: SelectableText(
+                                'ERROR AL CARGAR POSTULACIONES\n'
+                                '${snapshot.error}',
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          );
+                        }
+
+                        if (!snapshot.hasData) {
                           return const Center(
                             child: CircularProgressIndicator(
                               color: Colors.black,
@@ -192,26 +409,14 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                           );
                         }
 
-                        if (snapshot.hasError) {
-                          return const Center(
-                            child: Text(
-                              'ERROR AL CARGAR POSTULACIONES',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          );
-                        }
-
-                        final docs = snapshot.data?.docs ?? [];
+                        final docs = snapshot.data!.docs;
 
                         final search = _searchController.text
                             .trim()
                             .toLowerCase();
 
                         final filteredDocs = docs.where((doc) {
-                          final data =
-                              doc.data() as Map<String, dynamic>;
+                          final data = doc.data();
 
                           final company =
                               (data['company'] ?? '')
@@ -225,7 +430,8 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
 
                           final status =
                               (data['status'] ?? '')
-                                  .toString();
+                                  .toString()
+                                  .toUpperCase();
 
                           final matchesSearch =
                               company.contains(search) ||
@@ -235,203 +441,48 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                               _selectedStatus == 'TODOS' ||
                               status == _selectedStatus;
 
-                          return matchesSearch &&
-                              matchesStatus;
+                          return matchesSearch && matchesStatus;
                         }).toList();
 
+                        filteredDocs.sort((a, b) {
+                          DateTime readDate(
+                            Map<String, dynamic> data,
+                          ) {
+                            final value = data['createdAt'] ??
+                                data['date'];
+
+                            return value is Timestamp
+                                ? value.toDate()
+                                : DateTime(1970);
+                          }
+
+                          return readDate(b.data()).compareTo(
+                            readDate(a.data()),
+                          );
+                        });
+
                         if (filteredDocs.isEmpty) {
-                          return const Center(
-                            child: Text(
-                              'NO SE ENCONTRARON POSTULACIONES',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                          return _buildEmptyState(
+                            hasApplications: docs.isNotEmpty,
                           );
                         }
 
                         return ListView.builder(
+                          padding: const EdgeInsets.only(
+                            bottom: 12,
+                          ),
                           itemCount: filteredDocs.length,
                           itemBuilder: (context, index) {
-                            final document =
-                                filteredDocs[index];
-
-                            final data = document.data()
-                                as Map<String, dynamic>;
+                            final document = filteredDocs[index];
 
                             return _buildApplicationCard(
                               applicationId: document.id,
-                              applicationData: data,
-                              company:
-                                  data['company']?.toString() ??
-                                  'Sin empresa',
-                              role:
-                                  data['role']?.toString() ??
-                                  'Sin puesto',
-                              status:
-                                  data['status']?.toString() ??
-                                  'SIN ESTADO',
-                              modality:
-                                  data['modality']?.toString() ??
-                                  '',
-                              salary:
-                                  data['salary']?.toString() ??
-                                  '',
+                              applicationData: document.data(),
                             );
                           },
                         );
                       },
                     ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFilterButton(String status) {
-    final bool selected = _selectedStatus == status;
-
-    return GestureDetector(
-      onTap: () {
-        _selectStatus(status);
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 10,
-        ),
-        decoration: BoxDecoration(
-          color: selected
-              ? const Color(0xFFD4FF00)
-              : Colors.white,
-          border: Border.all(
-            color: Colors.black,
-            width: 2,
-          ),
-        ),
-        child: Text(
-          status,
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildApplicationCard({
-    required String applicationId,
-    required Map<String, dynamic> applicationData,
-    required String company,
-    required String role,
-    required String status,
-    required String modality,
-    required String salary,
-  }) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                ApplicationDetailScreen(
-              applicationId: applicationId,
-              applicationData: applicationData,
-            ),
-          ),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(
-            color: Colors.black,
-            width: 2,
-          ),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black,
-              offset: Offset(4, 4),
-              blurRadius: 0,
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              company,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-
-            const SizedBox(height: 6),
-
-            Text(
-              role,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[700],
-              ),
-            ),
-
-            if (modality.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Text(
-                'Modalidad: $modality',
-                style: const TextStyle(
-                  fontSize: 13,
-                ),
-              ),
-            ],
-
-            if (salary.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(
-                'Salario: $salary',
-                style: const TextStyle(
-                  fontSize: 13,
-                ),
-              ),
-            ],
-
-            const SizedBox(height: 16),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFD4FF00),
-                    border: Border.all(
-                      color: Colors.black,
-                      width: 2,
-                    ),
-                  ),
-                  child: Text(
-                    status,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-
-                const Icon(
-                  Icons.arrow_forward,
-                  color: Colors.black,
-                ),
-              ],
             ),
           ],
         ),
