@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 import 'package:job_track/screens/login_screen.dart';
 import 'package:job_track/screens/applications_screen.dart';
+import 'package:job_track/screens/interviews_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -23,8 +25,11 @@ class HomeScreen extends StatelessWidget {
         centerTitle: true,
       ),
       body: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 32,
+            vertical: 32,
+          ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -41,7 +46,8 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 16),
 
               Text(
-                'Organiza tus postulaciones y realiza el seguimiento de tu búsqueda laboral.',
+                'Organiza tus postulaciones y realiza el seguimiento '
+                'de tu búsqueda laboral.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
@@ -51,7 +57,9 @@ class HomeScreen extends StatelessWidget {
 
               const SizedBox(height: 40),
 
-              GestureDetector(
+              // BOTÓN: POSTULACIONES
+              _buildNavigationButton(
+                text: 'VER POSTULACIONES',
                 onTap: () {
                   Navigator.push(
                     context,
@@ -61,38 +69,27 @@ class HomeScreen extends StatelessWidget {
                     ),
                   );
                 },
-                child: Container(
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFD4FF00),
-                    border: Border.all(
-                      color: Colors.black,
-                      width: 2,
-                    ),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black,
-                        offset: Offset(4, 4),
-                        blurRadius: 0,
-                      ),
-                    ],
-                  ),
-                  child: const Center(
-                    child: Text(
-                      'VER POSTULACIONES',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                ),
               ),
 
               const SizedBox(height: 24),
 
+              // BOTÓN: ENTREVISTAS
+              _buildNavigationButton(
+                text: 'VER ENTREVISTAS',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          const InterviewsScreen(),
+                    ),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 32),
+
+              // BOTÓN: CERRAR SESIÓN
               ElevatedButton(
                 onPressed: () async {
                   await FirebaseAuth.instance.signOut();
@@ -109,9 +106,10 @@ class HomeScreen extends StatelessWidget {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.black,
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 32,
-                    vertical: 16,
+                    vertical: 18,
                   ),
                   shape: const RoundedRectangleBorder(
                     borderRadius: BorderRadius.zero,
@@ -120,12 +118,49 @@ class HomeScreen extends StatelessWidget {
                 child: const Text(
                   'CERRAR SESIÓN',
                   style: TextStyle(
-                    color: Colors.white,
                     fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
                   ),
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavigationButton({
+    required String text,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: const Color(0xFFD4FF00),
+          border: Border.all(
+            color: Colors.black,
+            width: 2,
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black,
+              offset: Offset(4, 4),
+              blurRadius: 0,
+            ),
+          ],
+        ),
+        child: Center(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1,
+              color: Colors.black,
+            ),
           ),
         ),
       ),
