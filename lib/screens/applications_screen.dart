@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -10,16 +9,14 @@ class ApplicationsScreen extends StatefulWidget {
   const ApplicationsScreen({super.key});
 
   @override
-  State<ApplicationsScreen> createState() =>
-      _ApplicationsScreenState();
+  State<ApplicationsScreen> createState() => _ApplicationsScreenState();
 }
 
 class _ApplicationsScreenState extends State<ApplicationsScreen> {
   static const Color lime = Color(0xFFD4FF00);
   static const Color background = Color(0xFFF4F4F4);
 
-  final TextEditingController _searchController =
-      TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
 
   String _selectedStatus = 'TODOS';
 
@@ -80,8 +77,7 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
         child: Padding(
           padding: EdgeInsets.all(24),
           child: Text(
-            'NO SE ENCONTRARON POSTULACIONES '
-            'CON LOS FILTROS SELECCIONADOS',
+            'NO SE ENCONTRARON POSTULACIONES CON LOS FILTROS SELECCIONADOS',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontWeight: FontWeight.w900,
@@ -113,8 +109,7 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
             ),
             const SizedBox(height: 12),
             const Text(
-              'Explorá las ofertas publicadas por las '
-              'empresas y postulate a las que te interesen.',
+              'Explorá las ofertas publicadas por las empresas y postulate a las que te interesen.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.black54,
@@ -156,20 +151,11 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
     required String applicationId,
     required Map<String, dynamic> applicationData,
   }) {
-    final company =
-        (applicationData['company'] ?? 'Sin empresa').toString();
-
-    final role =
-        (applicationData['role'] ?? 'Sin puesto').toString();
-
-    final status =
-        (applicationData['status'] ?? 'SIN ESTADO').toString();
-
-    final modality =
-        (applicationData['modality'] ?? '').toString();
-
-    final salary =
-        (applicationData['salary'] ?? '').toString();
+    final company = (applicationData['company'] ?? 'Sin empresa').toString();
+    final role = (applicationData['role'] ?? 'Sin puesto').toString();
+    final status = (applicationData['status'] ?? 'SIN ESTADO').toString();
+    final modality = (applicationData['modality'] ?? '').toString();
+    final salary = (applicationData['salary'] ?? '').toString();
 
     return GestureDetector(
       onTap: () {
@@ -218,19 +204,15 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                 color: Colors.black54,
               ),
             ),
-
             if (modality.isNotEmpty) ...[
               const SizedBox(height: 12),
               Text('Modalidad: $modality'),
             ],
-
             if (salary.isNotEmpty) ...[
               const SizedBox(height: 6),
               Text('Salario: $salary'),
             ],
-
             const SizedBox(height: 16),
-
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -290,202 +272,132 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
       ),
     );
 
-    return Scaffold(
-      backgroundColor: background,
-      appBar: AppBar(
-        backgroundColor: lime,
-        elevation: 0,
-        centerTitle: true,
-        iconTheme: const IconThemeData(
-          color: Colors.black,
-        ),
-        title: const Text(
-          'POSTULACIONES',
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-            color: Colors.black,
-            letterSpacing: 1,
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            controller: _searchController,
+            onChanged: (_) {
+              setState(() {});
+            },
+            decoration: const InputDecoration(
+              hintText: 'Buscar empresa o puesto...',
+              prefixIcon: Icon(
+                Icons.search,
+                color: Colors.black,
+              ),
+              filled: true,
+              fillColor: Colors.white,
+              enabledBorder: brutalistBorder,
+              focusedBorder: brutalistBorder,
+              contentPadding: EdgeInsets.all(16),
+            ),
           ),
-        ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'MIS POSTULACIONES',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Consultá el estado de tus postulaciones '
-              'a las ofertas laborales.',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.black54,
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            TextField(
-              controller: _searchController,
-              onChanged: (_) {
-                setState(() {});
-              },
-              decoration: const InputDecoration(
-                hintText: 'Buscar empresa o puesto...',
-                prefixIcon: Icon(
-                  Icons.search,
-                  color: Colors.black,
-                ),
-                filled: true,
-                fillColor: Colors.white,
-                enabledBorder: brutalistBorder,
-                focusedBorder: brutalistBorder,
-                contentPadding: EdgeInsets.all(16),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _buildFilterButton('TODOS'),
-                _buildFilterButton('POSTULADO'),
-                _buildFilterButton('EN PROCESO'),
-                _buildFilterButton('ENTREVISTA'),
-                _buildFilterButton('OFERTA'),
-                _buildFilterButton('RECHAZADO'),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-
-            Expanded(
-              child: user == null
-                  ? const Center(
-                      child: Text(
-                        'NO HAY USUARIO AUTENTICADO',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                        ),
+          const SizedBox(height: 20),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildFilterButton('TODOS'),
+              _buildFilterButton('POSTULADO'),
+              _buildFilterButton('EN PROCESO'),
+              _buildFilterButton('ENTREVISTA'),
+              _buildFilterButton('OFERTA'),
+              _buildFilterButton('RECHAZADO'),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Expanded(
+            child: user == null
+                ? const Center(
+                    child: Text(
+                      'NO HAY USUARIO AUTENTICADO',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
                       ),
-                    )
-                  : StreamBuilder<
-                      QuerySnapshot<Map<String, dynamic>>>(
-                      stream: FirebaseFirestore.instance
-                          .collection('applications')
-                          .where(
-                            'userId',
-                            isEqualTo: user.uid,
-                          )
-                          .snapshots(),
-                      builder: (context, snapshot) {
-                        if (snapshot.hasError) {
-                          return Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: SelectableText(
-                                'ERROR AL CARGAR POSTULACIONES\n'
-                                '${snapshot.error}',
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          );
-                        }
-
-                        if (!snapshot.hasData) {
-                          return const Center(
-                            child: CircularProgressIndicator(
-                              color: Colors.black,
-                            ),
-                          );
-                        }
-
-                        final docs = snapshot.data!.docs;
-
-                        final search = _searchController.text
-                            .trim()
-                            .toLowerCase();
-
-                        final filteredDocs = docs.where((doc) {
-                          final data = doc.data();
-
-                          final company =
-                              (data['company'] ?? '')
-                                  .toString()
-                                  .toLowerCase();
-
-                          final role =
-                              (data['role'] ?? '')
-                                  .toString()
-                                  .toLowerCase();
-
-                          final status =
-                              (data['status'] ?? '')
-                                  .toString()
-                                  .toUpperCase();
-
-                          final matchesSearch =
-                              company.contains(search) ||
-                              role.contains(search);
-
-                          final matchesStatus =
-                              _selectedStatus == 'TODOS' ||
-                              status == _selectedStatus;
-
-                          return matchesSearch && matchesStatus;
-                        }).toList();
-
-                        filteredDocs.sort((a, b) {
-                          DateTime readDate(
-                            Map<String, dynamic> data,
-                          ) {
-                            final value = data['createdAt'] ??
-                                data['date'];
-
-                            return value is Timestamp
-                                ? value.toDate()
-                                : DateTime(1970);
-                          }
-
-                          return readDate(b.data()).compareTo(
-                            readDate(a.data()),
-                          );
-                        });
-
-                        if (filteredDocs.isEmpty) {
-                          return _buildEmptyState(
-                            hasApplications: docs.isNotEmpty,
-                          );
-                        }
-
-                        return ListView.builder(
-                          padding: const EdgeInsets.only(
-                            bottom: 12,
-                          ),
-                          itemCount: filteredDocs.length,
-                          itemBuilder: (context, index) {
-                            final document = filteredDocs[index];
-
-                            return _buildApplicationCard(
-                              applicationId: document.id,
-                              applicationData: document.data(),
-                            );
-                          },
-                        );
-                      },
                     ),
-            ),
-          ],
-        ),
+                  )
+                : StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: FirebaseFirestore.instance
+                        .collection('applications')
+                        .where(
+                          'userId',
+                          isEqualTo: user.uid,
+                        )
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: SelectableText(
+                              'ERROR AL CARGAR POSTULACIONES\n${snapshot.error}',
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        );
+                      }
+
+                      if (!snapshot.hasData) {
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            color: Colors.black,
+                          ),
+                        );
+                      }
+
+                      final docs = snapshot.data!.docs;
+
+                      final search = _searchController.text.trim().toLowerCase();
+
+                      final filteredDocs = docs.where((doc) {
+                        final data = doc.data();
+
+                        final company = (data['company'] ?? '').toString().toLowerCase();
+                        final role = (data['role'] ?? '').toString().toLowerCase();
+                        final status = (data['status'] ?? '').toString().toUpperCase();
+
+                        final matchesSearch = company.contains(search) || role.contains(search);
+                        final matchesStatus = _selectedStatus == 'TODOS' || status == _selectedStatus;
+
+                        return matchesSearch && matchesStatus;
+                      }).toList();
+
+                      filteredDocs.sort((a, b) {
+                        DateTime readDate(Map<String, dynamic> data) {
+                          final value = data['createdAt'] ?? data['date'];
+                          return value is Timestamp ? value.toDate() : DateTime(1970);
+                        }
+
+                        return readDate(b.data()).compareTo(readDate(a.data()));
+                      });
+
+                      if (filteredDocs.isEmpty) {
+                        return _buildEmptyState(
+                          hasApplications: docs.isNotEmpty,
+                        );
+                      }
+
+                      return ListView.builder(
+                        padding: const EdgeInsets.only(
+                          bottom: 12,
+                        ),
+                        itemCount: filteredDocs.length,
+                        itemBuilder: (context, index) {
+                          final document = filteredDocs[index];
+
+                          return _buildApplicationCard(
+                            applicationId: document.id,
+                            applicationData: document.data(),
+                          );
+                        },
+                      );
+                    },
+                  ),
+          ),
+        ],
       ),
     );
   }
