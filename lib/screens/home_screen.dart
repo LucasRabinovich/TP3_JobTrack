@@ -7,6 +7,7 @@ import 'package:job_track/screens/applications_screen.dart';
 import 'package:job_track/screens/interviews_screen.dart';
 import 'package:job_track/screens/job_offers_screen.dart';
 import 'package:job_track/screens/profile_screen.dart';
+import 'package:job_track/screens/statistics_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -126,6 +127,19 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const InterviewsScreen()));
               },
             ),
+            _buildDrawerItem(
+              icon: Icons.bar_chart,
+              text: 'ESTADÍSTICAS',
+              onTap: () {
+                Navigator.pop(context); // Cierra la hamburguesa
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const StatisticsScreen()));
+              },
+            ),
+
+
+
+
+
             const Spacer(),
             const Divider(color: Colors.black, thickness: 2, height: 0),
             _buildDrawerItem(
