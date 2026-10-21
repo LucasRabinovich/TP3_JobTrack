@@ -8,6 +8,7 @@ import 'package:job_track/screens/interviews_screen.dart';
 import 'package:job_track/screens/job_offers_screen.dart';
 import 'package:job_track/screens/profile_screen.dart';
 import 'package:job_track/screens/statistics_screen.dart';
+import 'package:job_track/screens/documents_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,6 +19,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   static const Color lime = Color(0xFFD4FF00);
+
   int _selectedIndex = 0;
 
   final List<String> _appBarTitles = [
@@ -32,13 +34,22 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _openDocuments() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const DocumentsScreen(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentUser = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F4F4),
-      
+
       appBar: AppBar(
         title: Text(
           _appBarTitles[_selectedIndex],
@@ -51,22 +62,35 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: lime,
         elevation: 0,
         centerTitle: true,
-        shape: const Border(bottom: BorderSide(color: Colors.black, width: 2)),
-       
-        iconTheme: const IconThemeData(color: Colors.black, size: 30),
+        shape: const Border(
+          bottom: BorderSide(
+            color: Colors.black,
+            width: 2,
+          ),
+        ),
+        iconTheme: const IconThemeData(
+          color: Colors.black,
+          size: 30,
+        ),
       ),
-      
-      
+
       endDrawer: Drawer(
         backgroundColor: const Color(0xFFF4F4F4),
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.zero,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             DrawerHeader(
               decoration: const BoxDecoration(
                 color: lime,
-                border: Border(bottom: BorderSide(color: Colors.black, width: 2)),
+                border: Border(
+                  bottom: BorderSide(
+                    color: Colors.black,
+                    width: 2,
+                  ),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -75,81 +99,131 @@ class _HomeScreenState extends State<HomeScreen> {
                   const CircleAvatar(
                     radius: 30,
                     backgroundColor: Colors.black,
-                    child: Icon(Icons.person, color: Colors.white, size: 35),
+                    child: Icon(
+                      Icons.person,
+                      color: Colors.white,
+                      size: 35,
+                    ),
                   ),
                   const SizedBox(height: 12),
-                  
                   FutureBuilder<DocumentSnapshot>(
-                    future: currentUser != null 
-                        ? FirebaseFirestore.instance.collection('users').doc(currentUser.uid).get()
+                    future: currentUser != null
+                        ? FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(currentUser.uid)
+                            .get()
                         : null,
                     builder: (context, snapshot) {
-                      String displayName = 'MI CUENTA'; 
-                      
-                      if (snapshot.connectionState == ConnectionState.waiting) {
+                      String displayName = 'MI CUENTA';
+
+                      if (snapshot.connectionState ==
+                          ConnectionState.waiting) {
                         displayName = 'CARGANDO...';
-                      } else if (snapshot.hasData && snapshot.data!.exists) {
-                        final data = snapshot.data!.data() as Map<String, dynamic>;
-                        
-                        displayName = (data['name'] ?? currentUser?.email ?? 'USUARIO').toString().toUpperCase();
+                      } else if (snapshot.hasData &&
+                          snapshot.data!.exists) {
+                        final data = snapshot.data!.data()
+                            as Map<String, dynamic>;
+
+                        displayName = (data['name'] ??
+                                currentUser?.email ??
+                                'USUARIO')
+                            .toString()
+                            .toUpperCase();
                       } else if (currentUser?.email != null) {
-                        displayName = currentUser!.email!.toUpperCase();
+                        displayName =
+                            currentUser!.email!.toUpperCase();
                       }
 
                       return Text(
                         displayName,
                         style: const TextStyle(
-                          fontSize: 16, 
-                          fontWeight: FontWeight.w900, 
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
                           letterSpacing: 1,
                         ),
                         maxLines: 1,
-                        overflow: TextOverflow.ellipsis, 
+                        overflow: TextOverflow.ellipsis,
                       );
                     },
                   ),
                 ],
               ),
             ),
+
             _buildDrawerItem(
               icon: Icons.work_outline,
               text: 'OFERTAS LABORALES',
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const JobOffersScreen()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const JobOffersScreen(),
+                  ),
+                );
               },
             ),
+
             _buildDrawerItem(
               icon: Icons.event_note,
               text: 'MIS ENTREVISTAS',
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const InterviewsScreen()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const InterviewsScreen(),
+                  ),
+                );
               },
             ),
+
+            // NUEVA OPCIÓN: DOCUMENTOS Y CV
+            _buildDrawerItem(
+              icon: Icons.description_outlined,
+              text: 'MIS DOCUMENTOS Y CV',
+              onTap: () {
+                Navigator.pop(context);
+                _openDocuments();
+              },
+            ),
+
             _buildDrawerItem(
               icon: Icons.bar_chart,
               text: 'ESTADÍSTICAS',
               onTap: () {
-                Navigator.pop(context); // Cierra la hamburguesa
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const StatisticsScreen()));
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const StatisticsScreen(),
+                  ),
+                );
               },
             ),
 
-
-
-
-
             const Spacer(),
-            const Divider(color: Colors.black, thickness: 2, height: 0),
+
+            const Divider(
+              color: Colors.black,
+              thickness: 2,
+              height: 0,
+            ),
+
             _buildDrawerItem(
               icon: Icons.logout,
               text: 'CERRAR SESIÓN',
               isDestructive: true,
               onTap: () async {
                 await FirebaseAuth.instance.signOut();
+
                 if (context.mounted) {
-                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const LoginScreen(),
+                    ),
+                  );
                 }
               },
             ),
@@ -160,15 +234,20 @@ class _HomeScreenState extends State<HomeScreen> {
       body: IndexedStack(
         index: _selectedIndex,
         children: [
-          _buildHomeContent(),          
-          const ApplicationsScreen(),   
-          const ProfileScreen(),        
+          _buildHomeContent(),
+          const ApplicationsScreen(),
+          const ProfileScreen(),
         ],
       ),
 
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: Colors.black, width: 2)),
+          border: Border(
+            top: BorderSide(
+              color: Colors.black,
+              width: 2,
+            ),
+          ),
         ),
         child: BottomNavigationBar(
           backgroundColor: Colors.white,
@@ -176,14 +255,32 @@ class _HomeScreenState extends State<HomeScreen> {
           onTap: _onItemTapped,
           selectedItemColor: Colors.black,
           unselectedItemColor: Colors.grey[600],
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12),
-          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+          selectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.w900,
+            fontSize: 12,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 11,
+          ),
           elevation: 0,
           type: BottomNavigationBarType.fixed,
           items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'INICIO'),
-            BottomNavigationBarItem(icon: Icon(Icons.folder_outlined), activeIcon: Icon(Icons.folder), label: 'POSTULACIONES'),
-            BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'PERFIL'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home_outlined),
+              activeIcon: Icon(Icons.home),
+              label: 'INICIO',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.folder_outlined),
+              activeIcon: Icon(Icons.folder),
+              label: 'POSTULACIONES',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline),
+              activeIcon: Icon(Icons.person),
+              label: 'PERFIL',
+            ),
           ],
         ),
       ),
@@ -193,23 +290,54 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildHomeContent() {
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 32),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 32,
+          vertical: 32,
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('¡Bienvenido a JobTrack!', textAlign: TextAlign.center, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            const Text(
+              '¡Bienvenido a JobTrack!',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: 16),
-            Text('Explorá ofertas laborales y realizá el seguimiento de tu búsqueda.', textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: Colors.grey[700])),
+            Text(
+              'Explorá ofertas laborales y realizá el '
+              'seguimiento de tu búsqueda.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[700],
+              ),
+            ),
             const SizedBox(height: 40),
+
             _buildNavigationButton(
               text: 'EXPLORAR OFERTAS',
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const JobOffersScreen())),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const JobOffersScreen(),
+                ),
+              ),
             ),
+
             const SizedBox(height: 24),
+
             _buildNavigationButton(
               text: 'VER ENTREVISTAS',
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InterviewsScreen())),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const InterviewsScreen(),
+                ),
+              ),
             ),
           ],
         ),
@@ -217,29 +345,68 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildNavigationButton({required String text, required VoidCallback onTap}) {
+  Widget _buildNavigationButton({
+    required String text,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         height: 56,
         decoration: BoxDecoration(
           color: lime,
-          border: Border.all(color: Colors.black, width: 2),
-          boxShadow: const [BoxShadow(color: Colors.black, offset: Offset(4, 4), blurRadius: 0)],
+          border: Border.all(
+            color: Colors.black,
+            width: 2,
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black,
+              offset: Offset(4, 4),
+              blurRadius: 0,
+            ),
+          ],
         ),
         child: Center(
-          child: Text(text, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, letterSpacing: 1, color: Colors.black)),
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1,
+              color: Colors.black,
+            ),
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildDrawerItem({required IconData icon, required String text, required VoidCallback onTap, bool isDestructive = false}) {
+  Widget _buildDrawerItem({
+    required IconData icon,
+    required String text,
+    required VoidCallback onTap,
+    bool isDestructive = false,
+  }) {
     return ListTile(
-      leading: Icon(icon, color: isDestructive ? Colors.red : Colors.black, size: 28),
-      title: Text(text, style: TextStyle(fontWeight: FontWeight.w900, color: isDestructive ? Colors.red : Colors.black, letterSpacing: 0.5)),
+      leading: Icon(
+        icon,
+        color: isDestructive ? Colors.red : Colors.black,
+        size: 28,
+      ),
+      title: Text(
+        text,
+        style: TextStyle(
+          fontWeight: FontWeight.w900,
+          color: isDestructive ? Colors.red : Colors.black,
+          letterSpacing: 0.5,
+        ),
+      ),
       onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 24,
+        vertical: 8,
+      ),
     );
   }
 }

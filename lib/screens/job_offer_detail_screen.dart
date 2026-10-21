@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -21,6 +20,14 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
 
   bool _isApplying = false;
 
+  void _showMessage(String message) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
   Future<void> _applyToOffer(
     Map<String, dynamic> offer,
   ) async {
@@ -33,6 +40,19 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
     try {
       final firestore = FirebaseFirestore.instance;
 
+      // Verificar que el usuario sea candidato.
+      final userSnapshot = await firestore
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (userSnapshot.data()?['role'] != 'candidato') {
+        throw Exception(
+          'Solo los candidatos pueden postularse.',
+        );
+      }
+
+      // Evitar postulaciones duplicadas.
       final existing = await firestore
           .collection('applications')
           .where('userId', isEqualTo: user.uid)
@@ -41,16 +61,11 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
           .get();
 
       if (existing.docs.isNotEmpty) {
-        if (!mounted) return;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Ya te postulaste a esta oferta'),
-          ),
-        );
+        _showMessage('Ya te postulaste a esta oferta');
         return;
       }
 
+      // Consultar la oferta actualizada.
       final offerSnapshot = await firestore
           .collection('job_offers')
           .doc(widget.offerId)
@@ -58,22 +73,41 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
 
       if (!offerSnapshot.exists ||
           offerSnapshot.data()?['isActive'] != true) {
-        if (!mounted) return;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Esta oferta ya no está disponible'),
-          ),
-        );
+        _showMessage('Esta oferta ya no está disponible');
         return;
       }
 
       final currentOffer = offerSnapshot.data()!;
 
-      await firestore.collection('applications').add({
+      final companyId =
+          currentOffer['companyId']?.toString() ?? '';
+
+      if (companyId.isEmpty) {
+        throw Exception(
+          'La oferta no tiene una empresa válida.',
+        );
+      }
+
+      // Referencia a la nueva postulación.
+      final applicationRef =
+          firestore.collection('applications').doc();
+
+      // Permiso para que la empresa pueda
+      // consultar los CV de este candidato.
+      final accessRef = firestore
+          .collection('cv_access')
+          .doc(user.uid)
+          .collection('companies')
+          .doc(companyId);
+
+      // Guardar la postulación y el permiso
+      // en una sola operación atómica.
+      final batch = firestore.batch();
+
+      batch.set(applicationRef, {
         'userId': user.uid,
         'offerId': widget.offerId,
-        'companyId': currentOffer['companyId'],
+        'companyId': companyId,
         'company': 'Empresa',
         'role': currentOffer['title'] ?? '',
         'date': Timestamp.now(),
@@ -84,23 +118,22 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      if (!mounted) return;
+      batch.set(accessRef, {
+        'candidateId': user.uid,
+        'companyId': companyId,
+        'applicationId': applicationRef.id,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('¡Te postulaste correctamente!'),
-        ),
-      );
+      await batch.commit();
 
-      Navigator.pop(context);
+      _showMessage('¡Te postulaste correctamente!');
+
+      if (mounted) {
+        Navigator.pop(context);
+      }
     } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al postularse: $e'),
-        ),
-      );
+      _showMessage('Error al postularse: $e');
     } finally {
       if (mounted) {
         setState(() => _isApplying = false);
@@ -115,7 +148,10 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: Colors.black, width: 2),
+        border: Border.all(
+          color: Colors.black,
+          width: 2,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -146,11 +182,15 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
         foregroundColor: Colors.black,
         title: const Text(
           'DETALLE DE OFERTA',
-          style: TextStyle(fontWeight: FontWeight.w900),
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+          ),
         ),
       ),
       body: user == null
-          ? const Center(child: Text('Iniciá sesión'))
+          ? const Center(
+              child: Text('Iniciá sesión'),
+            )
           : StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
               stream: FirebaseFirestore.instance
                   .collection('job_offers')
@@ -159,13 +199,17 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Center(
-                    child: Text('Error al cargar oferta: ${snapshot.error}'),
+                    child: Text(
+                      'Error al cargar oferta: ${snapshot.error}',
+                    ),
                   );
                 }
 
                 if (!snapshot.hasData) {
                   return const Center(
-                    child: CircularProgressIndicator(color: Colors.black),
+                    child: CircularProgressIndicator(
+                      color: Colors.black,
+                    ),
                   );
                 }
 
@@ -181,8 +225,12 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
                 final active = offer['isActive'] == true;
 
                 String value(String field) {
-                  final text = offer[field]?.toString().trim() ?? '';
-                  return text.isEmpty ? 'No especificado' : text;
+                  final text =
+                      offer[field]?.toString().trim() ?? '';
+
+                  return text.isEmpty
+                      ? 'No especificado'
+                      : text;
                 }
 
                 return SingleChildScrollView(
@@ -197,14 +245,41 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
                           fontWeight: FontWeight.w900,
                         ),
                       ),
+
                       const SizedBox(height: 20),
-                      _infoBox('DESCRIPCIÓN Y REQUISITOS', value('description')),
-                      _infoBox('MODALIDAD', value('modality')),
-                      _infoBox('TIPO DE CONTRATO', value('contractType')),
-                      _infoBox('SENIORITY', value('seniority')),
-                      _infoBox('UBICACIÓN', value('location')),
-                      _infoBox('SALARIO', value('salaryRange')),
+
+                      _infoBox(
+                        'DESCRIPCIÓN Y REQUISITOS',
+                        value('description'),
+                      ),
+
+                      _infoBox(
+                        'MODALIDAD',
+                        value('modality'),
+                      ),
+
+                      _infoBox(
+                        'TIPO DE CONTRATO',
+                        value('contractType'),
+                      ),
+
+                      _infoBox(
+                        'SENIORITY',
+                        value('seniority'),
+                      ),
+
+                      _infoBox(
+                        'UBICACIÓN',
+                        value('location'),
+                      ),
+
+                      _infoBox(
+                        'SALARIO',
+                        value('salaryRange'),
+                      ),
+
                       const SizedBox(height: 16),
+
                       ElevatedButton(
                         onPressed: active && !_isApplying
                             ? () => _applyToOffer(offer)
@@ -231,7 +306,9 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
                                 ),
                               )
                             : Text(
-                                active ? 'POSTULARME' : 'OFERTA CERRADA',
+                                active
+                                    ? 'POSTULARME'
+                                    : 'OFERTA CERRADA',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w900,
                                 ),

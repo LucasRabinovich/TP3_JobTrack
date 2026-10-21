@@ -14,7 +14,6 @@ class ApplicationsScreen extends StatefulWidget {
 
 class _ApplicationsScreenState extends State<ApplicationsScreen> {
   static const Color lime = Color(0xFFD4FF00);
-  static const Color background = Color(0xFFF4F4F4);
 
   final TextEditingController _searchController = TextEditingController();
 
