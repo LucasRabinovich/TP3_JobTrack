@@ -1,25 +1,44 @@
-
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-import 'interview_detail_screen.dart';
-
-class InterviewsScreen extends StatelessWidget {
+class InterviewsScreen extends StatefulWidget {
   const InterviewsScreen({super.key});
 
-  static const Color lime = Color(0xFFD4FF00);
-  static const Color background = Color(0xFFF4F4F4);
+  @override
+  State<InterviewsScreen> createState() => _InterviewsScreenState();
+}
 
-  String _formatDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}/'
-        '${date.month.toString().padLeft(2, '0')}/'
-        '${date.year}';
+class _InterviewsScreenState extends State<InterviewsScreen> {
+  static const Color lime = Color(0xFFD4FF00);
+
+  BoxDecoration _brutalBox({Color color = Colors.white}) {
+    return BoxDecoration(
+      color: color,
+      border: Border.all(color: Colors.black, width: 2),
+      boxShadow: const [
+        BoxShadow(
+          color: Colors.black,
+          offset: Offset(4, 4),
+          blurRadius: 0,
+        ),
+      ],
+    );
   }
 
-  String _formatTime(DateTime date) {
-    return '${date.hour.toString().padLeft(2, '0')}:'
-        '${date.minute.toString().padLeft(2, '0')}';
+  Future<void> _openLink(String url) async {
+    if (url.isEmpty) return;
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('NO SE PUDO ABRIR EL ENLACE'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   @override
@@ -27,269 +46,164 @@ class InterviewsScreen extends StatelessWidget {
     final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
-      backgroundColor: background,
+      backgroundColor: const Color(0xFFF4F4F4),
       appBar: AppBar(
         backgroundColor: lime,
         elevation: 0,
         centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.black),
+        iconTheme: const IconThemeData(color: Colors.black, size: 30),
         title: const Text(
-          'ENTREVISTAS',
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1,
-          ),
+          'MIS ENTREVISTAS',
+          style: TextStyle(fontWeight: FontWeight.w900, color: Colors.black, letterSpacing: 1),
         ),
+        shape: const Border(bottom: BorderSide(color: Colors.black, width: 2)),
       ),
       body: user == null
           ? const Center(
-              child: Text('INICIÁ SESIÓN PARA VER TUS ENTREVISTAS'),
+              child: Text(
+                'NO HAY USUARIO AUTENTICADO',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
             )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(20, 24, 20, 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'MIS ENTREVISTAS',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Consultá las entrevistas programadas por las empresas.',
-                        style: TextStyle(color: Colors.black54),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: StreamBuilder<
-                      QuerySnapshot<Map<String, dynamic>>>(
-                    stream: FirebaseFirestore.instance
-                        .collection('interviews')
-                        .where('userId', isEqualTo: user.uid)
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasError) {
-                        return const Center(
-                          child: Text('Error al cargar entrevistas'),
-                        );
-                      }
+          : StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('interviews')
+                  .where('userId', isEqualTo: user.uid)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator(color: Colors.black));
+                }
 
-                      if (!snapshot.hasData) {
-                        return const Center(
-                          child: CircularProgressIndicator(
-                            color: Colors.black,
+                if (snapshot.hasError) {
+                  return const Center(
+                    child: Text('ERROR AL CARGAR ENTREVISTAS', style: TextStyle(fontWeight: FontWeight.w900)),
+                  );
+                }
+
+                final docs = snapshot.data?.docs ?? [];
+
+                if (docs.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      'NO HAY ENTREVISTAS PROGRAMADAS',
+                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.all(20),
+                  itemCount: docs.length,
+                  itemBuilder: (context, index) {
+                    final data = docs[index].data() as Map<String, dynamic>;
+                    final company = data['company']?.toString().toUpperCase() ?? 'EMPRESA';
+                    final position = data['position']?.toString().toUpperCase() ?? 'PUESTO';
+                    final dateStr = data['dateString']?.toString().toUpperCase() ?? 'FECHA Y HORA';
+                    final modality = data['modality']?.toString().toUpperCase() ?? 'MODALIDAD';
+                    final linkOrLocation = data['link']?.toString() ?? '';
+                    final notes = data['notes']?.toString() ?? ''; // Capturamos las notas
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 20),
+                      padding: const EdgeInsets.all(16),
+                      decoration: _brutalBox(),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(company, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20)),
+                                    const SizedBox(height: 4),
+                                    Text(position, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: modality == 'VIRTUAL' ? const Color(0xFFE0E0E0) : lime,
+                                  border: Border.all(color: Colors.black, width: 1.5),
+                                ),
+                                child: Text(modality, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 10)),
+                              ),
+                            ],
                           ),
-                        );
-                      }
-
-                      final interviews = snapshot.data!.docs.toList();
-
-                      interviews.sort((a, b) {
-                        final dateA =
-                            a.data()['date'] as Timestamp?;
-                        final dateB =
-                            b.data()['date'] as Timestamp?;
-
-                        return (dateA?.toDate() ?? DateTime(2100))
-                            .compareTo(
-                          dateB?.toDate() ?? DateTime(2100),
-                        );
-                      });
-
-                      if (interviews.isEmpty) {
-                        return const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(24),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.event_busy_outlined,
-                                  size: 64,
-                                  color: Colors.black54,
-                                ),
-                                SizedBox(height: 20),
-                                Text(
-                                  'NO TENÉS ENTREVISTAS PROGRAMADAS',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                                SizedBox(height: 12),
-                                Text(
-                                  'Cuando una empresa programe una entrevista, aparecerá acá.',
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
+                          const SizedBox(height: 16),
+                          const Divider(color: Colors.black, thickness: 1.5, height: 0),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              const Icon(Icons.calendar_today, size: 16),
+                              const SizedBox(width: 8),
+                              Text(dateStr, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                            ],
                           ),
-                        );
-                      }
-
-                      return ListView.builder(
-                        padding: const EdgeInsets.all(20),
-                        itemCount: interviews.length,
-                        itemBuilder: (context, index) {
-                          final document = interviews[index];
-                          final data = document.data();
-
-                          final date =
-                              (data['date'] as Timestamp?)?.toDate();
-
-                          return GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      InterviewDetailScreen(
-                                    interviewId: document.id,
-                                  ),
-                                ),
-                              );
-                            },
-                            child: Container(
-                              margin:
-                                  const EdgeInsets.only(bottom: 16),
-                              padding: const EdgeInsets.all(18),
+                          
+                          // SECCIÓN DE INSTRUCCIONES / NOTAS
+                          if (notes.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: Colors.white,
-                                border: Border.all(
-                                  color: Colors.black,
-                                  width: 2,
-                                ),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Colors.black,
-                                    offset: Offset(4, 4),
-                                    blurRadius: 0,
-                                  ),
-                                ],
+                                color: const Color(0xFFE8E8E8),
+                                border: Border.all(color: Colors.black, width: 1.5),
                               ),
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  const Text(
+                                    'INSTRUCCIONES:',
+                                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: Colors.black54),
+                                  ),
+                                  const SizedBox(height: 4),
                                   Text(
-                                    (data['company'] ?? 'Sin empresa')
-                                        .toString()
-                                        .toUpperCase(),
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    (data['role'] ?? 'Sin puesto')
-                                        .toString(),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.calendar_today,
-                                        size: 18,
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Text(
-                                        date == null
-                                            ? 'Sin fecha'
-                                            : _formatDate(date),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.access_time,
-                                        size: 18,
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Text(
-                                        date == null
-                                            ? 'Sin hora'
-                                            : _formatTime(date),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 14),
-                                  Wrap(
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    children: [
-                                      _buildTag(
-                                        (data['type'] ?? 'Sin tipo')
-                                            .toString(),
-                                      ),
-                                      _buildTag(
-                                        (data['platform'] ??
-                                                'Sin plataforma')
-                                            .toString(),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  const Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.end,
-                                    children: [
-                                      Text(
-                                        'VER DETALLE',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                      SizedBox(width: 6),
-                                      Icon(Icons.arrow_forward),
-                                    ],
+                                    notes,
+                                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
                                   ),
                                 ],
                               ),
                             ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-    );
-  }
+                          ],
 
-  Widget _buildTag(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 7,
-      ),
-      decoration: BoxDecoration(
-        color: lime,
-        border: Border.all(
-          color: Colors.black,
-          width: 2,
-        ),
-      ),
-      child: Text(
-        text.toUpperCase(),
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w900,
-        ),
-      ),
+                          if (linkOrLocation.isNotEmpty) ...[
+                            const SizedBox(height: 16),
+                            GestureDetector(
+                              onTap: modality == 'VIRTUAL' ? () => _openLink(linkOrLocation) : null,
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                decoration: _brutalBox(color: modality == 'VIRTUAL' ? lime : Colors.white),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(modality == 'VIRTUAL' ? Icons.videocam : Icons.location_on, size: 18),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      modality == 'VIRTUAL' ? 'UNIRSE A LA LLAMADA' : linkOrLocation.toUpperCase(),
+                                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
     );
   }
 }

@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -204,6 +203,9 @@ class _InterviewDetailScreenState extends State<InterviewDetailScreen> {
 
                 final link =
                     (data['link'] ?? '').toString();
+                    
+                final companyNotes = 
+                    (data['notes'] ?? '').toString(); // Extraemos las notas de la empresa
 
                 return SingleChildScrollView(
                   padding: const EdgeInsets.all(20),
@@ -228,22 +230,26 @@ class _InterviewDetailScreenState extends State<InterviewDetailScreen> {
                       _infoBox(
                         'FECHA',
                         date == null
-                            ? 'No disponible'
+                            ? (data['dateString'] ?? 'No disponible').toString() // Fallback a dateString por si se programó desde la nueva función
                             : _formatDate(date),
                       ),
 
                       _infoBox(
                         'HORA',
                         date == null
-                            ? 'No disponible'
+                            ? 'Ver fecha'
                             : _formatTime(date),
                       ),
 
-                      _infoBox('TIPO DE ENTREVISTA', type),
+                      _infoBox('TIPO DE ENTREVISTA', type != 'No especificado' ? type : (data['modality'] ?? 'No especificado').toString()), // Fallback a modality
                       _infoBox('PLATAFORMA', platform),
 
                       if (interviewer.isNotEmpty)
                         _infoBox('ENTREVISTADOR', interviewer),
+
+                      // ACÁ MOSTRAMOS LAS NOTAS DE LA EMPRESA
+                      if (companyNotes.isNotEmpty)
+                        _infoBox('INSTRUCCIONES DE LA EMPRESA', companyNotes),
 
                       if (link.isNotEmpty) ...[
                         _infoBox('LINK / DIRECCIÓN', link),
