@@ -25,9 +25,9 @@ class _ApplicationDetailScreenState
 
   final List<String> _statuses = [
     'POSTULADO',
-    'EN PROCESO',
+    
     'ENTREVISTA',
-    'OFERTA',
+    'ACEPTADO',
     'RECHAZADO',
   ];
 
@@ -286,21 +286,16 @@ class _ApplicationDetailScreenState
               _buildTimelineItem(
                 title: 'POSTULADO',
                 active: true,
-              ),
-              _buildTimelineItem(
-                title: 'EN PROCESO',
-                active: _selectedStatus == 'EN PROCESO' ||
-                    _selectedStatus == 'ENTREVISTA' ||
-                    _selectedStatus == 'OFERTA',
+            
               ),
               _buildTimelineItem(
                 title: 'ENTREVISTA',
                 active: _selectedStatus == 'ENTREVISTA' ||
-                    _selectedStatus == 'OFERTA',
+                    _selectedStatus == 'Aceptado',
               ),
               _buildTimelineItem(
-                title: 'OFERTA',
-                active: _selectedStatus == 'OFERTA',
+                title: 'Aceptado',
+                active: _selectedStatus == 'Aceptado',
               ),
 
               const SizedBox(height: 32),

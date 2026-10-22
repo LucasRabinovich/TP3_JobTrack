@@ -9,10 +9,11 @@ class StatisticsScreen extends StatelessWidget {
   static const Color lime = Color(0xFFD4FF00);
   static const Color background = Color(0xFFF4F4F4);
 
+  
   static const Color colorRechazados = Color(0xFFFFA6A6); 
-  static const Color colorEnProceso = lime;
-  static const Color colorSinRespuesta = Color(0xFF00FFFF); 
-  static const Color colorOfertas = Colors.black;
+  static const Color colorEntrevistas = lime;            
+  static const Color colorPostulados = Color(0xFF00FFFF); 
+  static const Color colorAceptados = Colors.black;       
 
   BoxDecoration _brutalBox() {
     return BoxDecoration(
@@ -63,10 +64,11 @@ class StatisticsScreen extends StatelessWidget {
 
           final docs = snapshot.data?.docs ?? [];
 
+          
           int rechazados = 0;
-          int enProceso = 0;
-          int sinRespuesta = 0;
-          int ofertas = 0;
+          int entrevistas = 0;
+          int postulados = 0;
+          int aceptados = 0;
 
           Map<int, int> postulacionesPorMes = {};
 
@@ -74,14 +76,16 @@ class StatisticsScreen extends StatelessWidget {
             final data = doc.data();
             
             final status = (data['status'] ?? '').toString().toUpperCase();
+            
+            
             if (status == 'RECHAZADO') {
               rechazados++;
-            } else if (status == 'EN PROCESO' || status == 'ENTREVISTA') {
-              enProceso++;
-            } else if (status == 'OFERTA') {
-              ofertas++;
+            } else if (status == 'ENTREVISTA') {
+              entrevistas++;
+            } else if (status == 'ACEPTADO') {
+              aceptados++;
             } else {
-              sinRespuesta++; 
+              postulados++;
             }
 
             DateTime date;
@@ -96,7 +100,7 @@ class StatisticsScreen extends StatelessWidget {
             postulacionesPorMes[date.month] = (postulacionesPorMes[date.month] ?? 0) + 1;
           }
 
-          final int totalPostulaciones = rechazados + enProceso + sinRespuesta + ofertas;
+          final int totalPostulaciones = rechazados + entrevistas + postulados + aceptados;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20),
@@ -126,7 +130,6 @@ class StatisticsScreen extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                    
                       Expanded(
                         child: Container(
                           padding: const EdgeInsets.all(16),
@@ -140,7 +143,6 @@ class StatisticsScreen extends StatelessWidget {
                               const SizedBox(height: 20),
                               Expanded(
                                 child: Container(
-                                
                                   color: Colors.grey[100],
                                   padding: const EdgeInsets.only(top: 16, right: 8),
                                   child: _buildBarChart(postulacionesPorMes),
@@ -153,7 +155,6 @@ class StatisticsScreen extends StatelessWidget {
                       
                       const SizedBox(width: 16),
 
-                      
                       Expanded(
                         child: Container(
                           padding: const EdgeInsets.all(16),
@@ -168,7 +169,7 @@ class StatisticsScreen extends StatelessWidget {
                               
                               SizedBox(
                                 height: 140, 
-                                child: _buildDonutChart(rechazados, enProceso, sinRespuesta, ofertas, totalPostulaciones),
+                                child: _buildDonutChart(rechazados, entrevistas, postulados, aceptados, totalPostulaciones),
                               ),
                               
                               const SizedBox(height: 24),
@@ -182,9 +183,10 @@ class StatisticsScreen extends StatelessWidget {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        _buildLegendItem(colorRechazados, 'Rechazados', rechazados),
+                                        
+                                        _buildLegendItem(colorPostulados, 'Postulados', postulados),
                                         const SizedBox(height: 12),
-                                        _buildLegendItem(colorSinRespuesta, 'Sin Resp.', sinRespuesta),
+                                        _buildLegendItem(colorRechazados, 'Rechazados', rechazados),
                                       ],
                                     ),
                                   ),
@@ -192,9 +194,9 @@ class StatisticsScreen extends StatelessWidget {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        _buildLegendItem(colorEnProceso, 'En Proceso', enProceso),
+                                        _buildLegendItem(colorEntrevistas, 'Entrevistas', entrevistas),
                                         const SizedBox(height: 12),
-                                        _buildLegendItem(colorOfertas, 'Ofertas', ofertas),
+                                        _buildLegendItem(colorAceptados, 'Aceptados', aceptados),
                                       ],
                                     ),
                                   ),
@@ -216,7 +218,6 @@ class StatisticsScreen extends StatelessWidget {
     );
   }
 
-  
   Widget _buildCardTitle(String text) {
     return Stack(
       children: [
@@ -239,14 +240,12 @@ class StatisticsScreen extends StatelessWidget {
     List<BarChartGroupData> barGroups = [];
     final mesesNombres = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     
-   
     if (datos.isEmpty) {
       datos = {DateTime.now().month: 0}; 
     }
 
     int maxValor = datos.isNotEmpty ? datos.values.reduce((a, b) => a > b ? a : b) : 0;
     
-   
     double topeY = 4.0;
     double intervalo = 1.0;
 
@@ -355,10 +354,11 @@ class StatisticsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDonutChart(int rechazados, int enProceso, int sinRespuesta, int ofertas, int total) {
+  
+  Widget _buildDonutChart(int rechazados, int entrevistas, int postulados, int aceptados, int total) {
     if (total == 0) {
-    
-      rechazados = 12; enProceso = 5; sinRespuesta = 18; ofertas = 2; total = 37;
+      
+      rechazados = 12; entrevistas = 5; postulados = 18; aceptados = 2; total = 37;
     }
 
     return Stack(
@@ -370,14 +370,13 @@ class StatisticsScreen extends StatelessWidget {
             centerSpaceRadius: 40, 
             startDegreeOffset: -90,
             sections: [
-              _buildPieSection(colorEnProceso, enProceso.toDouble()),
+              _buildPieSection(colorEntrevistas, entrevistas.toDouble()),
               _buildPieSection(colorRechazados, rechazados.toDouble()),
-              _buildPieSection(colorOfertas, ofertas.toDouble()),
-              _buildPieSection(colorSinRespuesta, sinRespuesta.toDouble()),
+              _buildPieSection(colorAceptados, aceptados.toDouble()),
+              _buildPieSection(colorPostulados, postulados.toDouble()),
             ],
           ),
         ),
-       
         Column(
           mainAxisSize: MainAxisSize.min,
           children: [

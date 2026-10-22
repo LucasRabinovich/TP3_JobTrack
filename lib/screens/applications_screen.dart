@@ -301,9 +301,9 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
             children: [
               _buildFilterButton('TODOS'),
               _buildFilterButton('POSTULADO'),
-              _buildFilterButton('EN PROCESO'),
+             
               _buildFilterButton('ENTREVISTA'),
-              _buildFilterButton('OFERTA'),
+              _buildFilterButton('ACEPTADO'),
               _buildFilterButton('RECHAZADO'),
             ],
           ),
