@@ -24,7 +24,7 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+      SnackBar(content: Text(message, style: const TextStyle(fontWeight: FontWeight.bold))),
     );
   }
 
@@ -40,7 +40,6 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
     try {
       final firestore = FirebaseFirestore.instance;
 
-      // Verificar que el usuario sea candidato.
       final userSnapshot = await firestore
           .collection('users')
           .doc(user.uid)
@@ -52,7 +51,6 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
         );
       }
 
-      // Evitar postulaciones duplicadas.
       final existing = await firestore
           .collection('applications')
           .where('userId', isEqualTo: user.uid)
@@ -65,7 +63,6 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
         return;
       }
 
-      // Consultar la oferta actualizada.
       final offerSnapshot = await firestore
           .collection('job_offers')
           .doc(widget.offerId)
@@ -78,9 +75,9 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
       }
 
       final currentOffer = offerSnapshot.data()!;
-
-      final companyId =
-          currentOffer['companyId']?.toString() ?? '';
+      final companyId = currentOffer['companyId']?.toString() ?? '';
+      // Recuperamos el nombre de la empresa real si existe, sino usamos 'Empresa'
+      final companyName = currentOffer['companyName']?.toString() ?? 'Empresa';
 
       if (companyId.isEmpty) {
         throw Exception(
@@ -88,27 +85,21 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
         );
       }
 
-      // Referencia a la nueva postulación.
-      final applicationRef =
-          firestore.collection('applications').doc();
+      final applicationRef = firestore.collection('applications').doc();
 
-      // Permiso para que la empresa pueda
-      // consultar los CV de este candidato.
       final accessRef = firestore
           .collection('cv_access')
           .doc(user.uid)
           .collection('companies')
           .doc(companyId);
 
-      // Guardar la postulación y el permiso
-      // en una sola operación atómica.
       final batch = firestore.batch();
 
       batch.set(applicationRef, {
         'userId': user.uid,
         'offerId': widget.offerId,
         'companyId': companyId,
-        'company': 'Empresa',
+        'company': companyName, // Guardamos el nombre real acá también
         'role': currentOffer['title'] ?? '',
         'date': Timestamp.now(),
         'status': 'POSTULADO',
@@ -165,7 +156,7 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          Text(value),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
         ],
       ),
     );
@@ -186,10 +177,11 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
             fontWeight: FontWeight.w900,
           ),
         ),
+        shape: const Border(bottom: BorderSide(color: Colors.black, width: 2)),
       ),
       body: user == null
           ? const Center(
-              child: Text('Iniciá sesión'),
+              child: Text('Iniciá sesión', style: TextStyle(fontWeight: FontWeight.w900)),
             )
           : StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
               stream: FirebaseFirestore.instance
@@ -217,12 +209,16 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
 
                 if (!document.exists) {
                   return const Center(
-                    child: Text('Oferta no encontrada'),
+                    child: Text('Oferta no encontrada', style: TextStyle(fontWeight: FontWeight.w900)),
                   );
                 }
 
                 final offer = document.data()!;
                 final active = offer['isActive'] == true;
+                
+                // Extraemos el logo y nombre de la empresa de la oferta
+                final logoUrl = offer['logoUrl']?.toString().trim() ?? '';
+                final companyName = offer['companyName']?.toString().trim() ?? 'Empresa No Especificada';
 
                 String value(String field) {
                   final text =
@@ -238,15 +234,62 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(
-                        value('title').toUpperCase(),
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
+                      // TARJETA PRINCIPAL CON LOGO Y TÍTULO
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          border: Border.all(color: Colors.black, width: 2),
+                          boxShadow: const [BoxShadow(color: Colors.black, offset: Offset(4, 4))],
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (logoUrl.isNotEmpty) ...[
+                              Container(
+                                width: 60,
+                                height: 60,
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.black, width: 2),
+                                  color: const Color(0xFFF4F4F4),
+                                ),
+                                child: Image.network(
+                                  logoUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.business, size: 30),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                            ],
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    value('title').toUpperCase(),
+                                    style: const TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w900,
+                                      height: 1.1,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    companyName.toUpperCase(),
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black54,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
 
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 24),
 
                       _infoBox(
                         'DESCRIPCIÓN Y REQUISITOS',
@@ -278,7 +321,7 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
                         value('salaryRange'),
                       ),
 
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
 
                       ElevatedButton(
                         onPressed: active && !_isApplying
@@ -302,18 +345,21 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
                                 height: 22,
                                 child: CircularProgressIndicator(
                                   color: Colors.black,
-                                  strokeWidth: 2,
+                                  strokeWidth: 3,
                                 ),
                               )
                             : Text(
                                 active
-                                    ? 'POSTULARME'
+                                    ? 'POSTULARME AHORA'
                                     : 'OFERTA CERRADA',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w900,
+                                  fontSize: 16,
+                                  letterSpacing: 1,
                                 ),
                               ),
                       ),
+                      const SizedBox(height: 20),
                     ],
                   ),
                 );

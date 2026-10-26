@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -73,6 +72,10 @@ class _JobOffersScreenState extends State<JobOffersScreen> {
     final contract = _readText(data, 'contractType');
     final location = _readText(data, 'location');
     final salary = _readText(data, 'salaryRange');
+    
+    // Leemos el logo y el nombre de la empresa
+    final logoUrl = data['logoUrl']?.toString().trim() ?? '';
+    final companyName = data['companyName']?.toString().trim() ?? 'Empresa';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 18),
@@ -94,15 +97,54 @@ class _JobOffersScreenState extends State<JobOffersScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title.toUpperCase(),
-            style: const TextStyle(
-              fontSize: 19,
-              fontWeight: FontWeight.w900,
-            ),
+          // Fila superior con Logo, Título y Empresa
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (logoUrl.isNotEmpty) ...[
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.black, width: 2),
+                    color: const Color(0xFFF4F4F4),
+                  ),
+                  child: Image.network(
+                    logoUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.business, size: 24),
+                  ),
+                ),
+                const SizedBox(width: 14),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title.toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w900,
+                        height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      companyName.toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
 
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
 
           Wrap(
             spacing: 8,
