@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -18,25 +19,13 @@ class ApplicationDetailScreen extends StatefulWidget {
 
 class _ApplicationDetailScreenState
     extends State<ApplicationDetailScreen> {
-  late String _selectedStatus;
   late TextEditingController _notesController;
 
   bool _isSaving = false;
 
-  final List<String> _statuses = [
-    'POSTULADO',
-    
-    'ENTREVISTA',
-    'ACEPTADO',
-    'RECHAZADO',
-  ];
-
   @override
   void initState() {
     super.initState();
-
-    _selectedStatus =
-        widget.applicationData['status']?.toString() ?? 'POSTULADO';
 
     _notesController = TextEditingController(
       text: widget.applicationData['notes']?.toString() ?? '',
@@ -61,7 +50,6 @@ class _ApplicationDetailScreenState
           .collection('applications')
           .doc(widget.applicationId)
           .update({
-        'status': _selectedStatus,
         'notes': _notesController.text.trim(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
@@ -69,7 +57,7 @@ class _ApplicationDetailScreenState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Cambios guardados correctamente'),
+            content: Text('Notas guardadas correctamente'),
           ),
         );
       }
@@ -77,7 +65,7 @@ class _ApplicationDetailScreenState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al guardar cambios: $e'),
+            content: Text('Error al guardar las notas: $e'),
           ),
         );
       }
@@ -93,7 +81,6 @@ class _ApplicationDetailScreenState
   String _formatDate(dynamic value) {
     if (value is Timestamp) {
       final date = value.toDate();
-
       return '${date.day}/${date.month}/${date.year}';
     }
 
@@ -102,14 +89,6 @@ class _ApplicationDetailScreenState
 
   @override
   Widget build(BuildContext context) {
-    final data = widget.applicationData;
-
-    final company = data['company']?.toString() ?? 'Sin empresa';
-    final role = data['role']?.toString() ?? 'Sin puesto';
-    final modality = data['modality']?.toString() ?? 'Sin modalidad';
-    final salary = data['salary']?.toString() ?? '';
-    final offerLink = data['offerLink']?.toString() ?? '';
-
     return Scaffold(
       backgroundColor: const Color(0xFFF4F4F4),
       appBar: AppBar(
@@ -128,218 +107,235 @@ class _ApplicationDetailScreenState
           ),
         ),
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                company.toUpperCase(),
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1,
-                ),
+      body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+        stream: FirebaseFirestore.instance
+            .collection('applications')
+            .doc(widget.applicationId)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return const Center(
+              child: Text(
+                'No se pudo cargar la postulación.',
               ),
-              const SizedBox(height: 6),
-              Text(
-                role,
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Colors.grey[700],
-                ),
+            );
+          }
+
+          if (!snapshot.hasData) {
+            return const Center(
+              child: CircularProgressIndicator(
+                color: Colors.black,
               ),
+            );
+          }
 
-              const SizedBox(height: 24),
-
-              _buildInfoBox(
-                title: 'FECHA',
-                value: _formatDate(data['date']),
+          if (!snapshot.data!.exists) {
+            return const Center(
+              child: Text(
+                'La postulación ya no existe.',
               ),
+            );
+          }
 
-              const SizedBox(height: 12),
+          final data = snapshot.data!.data() ?? {};
 
-              _buildInfoBox(
-                title: 'MODALIDAD',
-                value: modality,
-              ),
+          final company =
+              data['company']?.toString() ?? 'Sin empresa';
 
-              if (salary.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                _buildInfoBox(
-                  title: 'SALARIO',
-                  value: salary,
-                ),
-              ],
+          final role =
+              data['role']?.toString() ?? 'Sin puesto';
 
-              if (offerLink.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                _buildInfoBox(
-                  title: 'LINK DE LA OFERTA',
-                  value: offerLink,
-                ),
-              ],
+          final modality =
+              data['modality']?.toString() ?? 'Sin modalidad';
 
-              const SizedBox(height: 28),
+          final salary =
+              data['salary']?.toString() ?? '';
 
-              const Text(
-                'ESTADO ACTUAL',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1,
-                ),
-              ),
+          final offerLink =
+              data['offerLink']?.toString() ?? '';
 
-              const SizedBox(height: 8),
+          final status =
+              data['status']?.toString().toUpperCase() ??
+                  'POSTULADO';
 
-              DropdownButtonFormField<String>(
-                initialValue: _selectedStatus,
-                decoration: const InputDecoration(
-                  filled: true,
-                  fillColor: Colors.white,
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.zero,
-                    borderSide: BorderSide(
-                      color: Colors.black,
-                      width: 2,
+          final isInterview =
+              status == 'ENTREVISTA' ||
+              status == 'ACEPTADO';
+
+          final isAccepted = status == 'ACEPTADO';
+
+          return SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    company.toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1,
                     ),
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.zero,
-                    borderSide: BorderSide(
-                      color: Colors.black,
-                      width: 2,
+
+                  const SizedBox(height: 6),
+
+                  Text(
+                    role,
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey[700],
                     ),
                   ),
-                ),
-                items: _statuses
-                    .map(
-                      (status) => DropdownMenuItem(
-                        value: status,
-                        child: Text(status),
+
+                  const SizedBox(height: 24),
+
+                  _buildInfoBox(
+                    title: 'FECHA',
+                    value: _formatDate(data['date']),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  _buildInfoBox(
+                    title: 'MODALIDAD',
+                    value: modality,
+                  ),
+
+                  if (salary.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    _buildInfoBox(
+                      title: 'SALARIO',
+                      value: salary,
+                    ),
+                  ],
+
+                  if (offerLink.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    _buildInfoBox(
+                      title: 'LINK DE LA OFERTA',
+                      value: offerLink,
+                    ),
+                  ],
+
+                  const SizedBox(height: 28),
+
+                  const Text(
+                    'NOTAS',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  TextField(
+                    controller: _notesController,
+                    maxLines: 5,
+                    decoration: const InputDecoration(
+                      hintText:
+                          'Agrega notas sobre entrevistas, contactos o próximos pasos...',
+                      filled: true,
+                      fillColor: Colors.white,
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.zero,
+                        borderSide: BorderSide(
+                          color: Colors.black,
+                          width: 2,
+                        ),
                       ),
-                    )
-                    .toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      _selectedStatus = value;
-                    });
-                  }
-                },
-              ),
-
-              const SizedBox(height: 28),
-
-              const Text(
-                'NOTAS',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1,
-                ),
-              ),
-
-              const SizedBox(height: 8),
-
-              TextField(
-                controller: _notesController,
-                maxLines: 5,
-                decoration: const InputDecoration(
-                  hintText:
-                      'Agrega notas sobre entrevistas, contactos o próximos pasos...',
-                  filled: true,
-                  fillColor: Colors.white,
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.zero,
-                    borderSide: BorderSide(
-                      color: Colors.black,
-                      width: 2,
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.zero,
-                    borderSide: BorderSide(
-                      color: Colors.black,
-                      width: 2,
-                    ),
-                  ),
-                  contentPadding: EdgeInsets.all(16),
-                ),
-              ),
-
-              const SizedBox(height: 28),
-
-              const Text(
-                'TIMELINE DEL PROCESO',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1,
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              _buildTimelineItem(
-                title: 'POSTULADO',
-                active: true,
-            
-              ),
-              _buildTimelineItem(
-                title: 'ENTREVISTA',
-                active: _selectedStatus == 'ENTREVISTA' ||
-                    _selectedStatus == 'Aceptado',
-              ),
-              _buildTimelineItem(
-                title: 'Aceptado',
-                active: _selectedStatus == 'Aceptado',
-              ),
-
-              const SizedBox(height: 32),
-
-              GestureDetector(
-                onTap: _saveChanges,
-                child: Container(
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: _isSaving
-                        ? const Color(0xFFAACC00)
-                        : const Color(0xFFD4FF00),
-                    border: Border.all(
-                      color: Colors.black,
-                      width: 2,
-                    ),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black,
-                        offset: Offset(4, 4),
-                        blurRadius: 0,
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.zero,
+                        borderSide: BorderSide(
+                          color: Colors.black,
+                          width: 2,
+                        ),
                       ),
-                    ],
+                      contentPadding: EdgeInsets.all(16),
+                    ),
                   ),
-                  child: Center(
-                    child: _isSaving
-                        ? const CircularProgressIndicator(
+
+                  const SizedBox(height: 28),
+
+                  const Text(
+                    'TIMELINE DEL PROCESO',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1,
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  _buildTimelineItem(
+                    title: 'POSTULADO',
+                    active: true,
+                  ),
+
+                  _buildTimelineItem(
+                    title: 'ENTREVISTA',
+                    active: isInterview,
+                  ),
+
+                  _buildTimelineItem(
+                    title: 'ACEPTADO',
+                    active: isAccepted,
+                  ),
+
+                  if (status == 'RECHAZADO')
+                    _buildTimelineItem(
+                      title: 'RECHAZADO',
+                      active: true,
+                    ),
+
+                  const SizedBox(height: 32),
+
+                  GestureDetector(
+                    onTap: _isSaving ? null : _saveChanges,
+                    child: Container(
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: _isSaving
+                            ? const Color(0xFFAACC00)
+                            : const Color(0xFFD4FF00),
+                        border: Border.all(
+                          color: Colors.black,
+                          width: 2,
+                        ),
+                        boxShadow: const [
+                          BoxShadow(
                             color: Colors.black,
-                          )
-                        : const Text(
-                            'GUARDAR CAMBIOS',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1,
-                              color: Colors.black,
-                            ),
+                            offset: Offset(4, 4),
+                            blurRadius: 0,
                           ),
+                        ],
+                      ),
+                      child: Center(
+                        child: _isSaving
+                            ? const CircularProgressIndicator(
+                                color: Colors.black,
+                              )
+                            : const Text(
+                                'GUARDAR NOTAS',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1,
+                                  color: Colors.black,
+                                ),
+                              ),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -368,7 +364,9 @@ class _ApplicationDetailScreenState
               letterSpacing: 1,
             ),
           ),
+
           const SizedBox(height: 6),
+
           Text(
             value,
             style: const TextStyle(
@@ -402,6 +400,7 @@ class _ApplicationDetailScreenState
                 ),
               ),
             ),
+
             Container(
               width: 2,
               height: 34,
@@ -409,14 +408,17 @@ class _ApplicationDetailScreenState
             ),
           ],
         ),
+
         const SizedBox(width: 12),
+
         Padding(
           padding: const EdgeInsets.only(top: 1),
           child: Text(
             title,
             style: TextStyle(
-              fontWeight:
-                  active ? FontWeight.w900 : FontWeight.normal,
+              fontWeight: active
+                  ? FontWeight.w900
+                  : FontWeight.normal,
             ),
           ),
         ),
@@ -424,3 +426,4 @@ class _ApplicationDetailScreenState
     );
   }
 }
+
