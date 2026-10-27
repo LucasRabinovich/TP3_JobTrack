@@ -24,7 +24,12 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message, style: const TextStyle(fontWeight: FontWeight.bold))),
+      SnackBar(
+        content: Text(
+          message,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
     );
   }
 
@@ -40,6 +45,7 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
     try {
       final firestore = FirebaseFirestore.instance;
 
+      // Verificar que el usuario sea candidato.
       final userSnapshot = await firestore
           .collection('users')
           .doc(user.uid)
@@ -51,6 +57,7 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
         );
       }
 
+      // Evitar postulaciones duplicadas.
       final existing = await firestore
           .collection('applications')
           .where('userId', isEqualTo: user.uid)
@@ -63,6 +70,7 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
         return;
       }
 
+      // Verificar que la oferta siga activa.
       final offerSnapshot = await firestore
           .collection('job_offers')
           .doc(widget.offerId)
@@ -75,9 +83,12 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
       }
 
       final currentOffer = offerSnapshot.data()!;
-      final companyId = currentOffer['companyId']?.toString() ?? '';
-      // Recuperamos el nombre de la empresa real si existe, sino usamos 'Empresa'
-      final companyName = currentOffer['companyName']?.toString() ?? 'Empresa';
+
+      final companyId =
+          currentOffer['companyId']?.toString() ?? '';
+
+      final companyName =
+          currentOffer['companyName']?.toString() ?? 'Empresa';
 
       if (companyId.isEmpty) {
         throw Exception(
@@ -85,7 +96,45 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
         );
       }
 
-      final applicationRef = firestore.collection('applications').doc();
+      // Buscar el CV principal del candidato.
+      final documentsSnapshot = await firestore
+          .collection('documents')
+          .where('userId', isEqualTo: user.uid)
+          .get();
+
+      final primaryDocuments = documentsSnapshot.docs.where(
+        (document) {
+          final data = document.data();
+
+          return data['isPrimary'] == true &&
+              data['storageType'] == 'supabase' &&
+              data['type'] == 'cv' &&
+              data['storagePath'] ==
+                  '${user.uid}/${document.id}.pdf';
+        },
+      ).toList();
+
+      if (primaryDocuments.isEmpty) {
+        _showMessage(
+          'Necesitás cargar un CV válido y marcarlo '
+          'como principal antes de postularte.',
+        );
+        return;
+      }
+
+      if (primaryDocuments.length > 1) {
+        throw Exception(
+          'Tenés más de un CV principal. '
+          'Revisá tus documentos antes de postularte.',
+        );
+      }
+
+      final primaryCv = primaryDocuments.first;
+      final primaryCvData = primaryCv.data();
+
+      // Crear la postulación.
+      final applicationRef =
+          firestore.collection('applications').doc();
 
       final accessRef = firestore
           .collection('cv_access')
@@ -99,7 +148,7 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
         'userId': user.uid,
         'offerId': widget.offerId,
         'companyId': companyId,
-        'company': companyName, // Guardamos el nombre real acá también
+        'company': companyName,
         'role': currentOffer['title'] ?? '',
         'date': Timestamp.now(),
         'status': 'POSTULADO',
@@ -107,8 +156,16 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
         'salary': currentOffer['salaryRange'] ?? '',
         'notes': '',
         'createdAt': FieldValue.serverTimestamp(),
+
+        // CV utilizado en esta postulación.
+        // Guardamos su referencia, no el archivo PDF.
+        'cvDocumentId': primaryCv.id,
+        'cvName': primaryCvData['name'] ?? 'CV.pdf',
+        'cvStorageType': 'supabase',
       });
 
+      // Conservamos el registro de acceso existente
+      // para mantener compatibilidad con el proyecto.
       batch.set(accessRef, {
         'candidateId': user.uid,
         'companyId': companyId,
@@ -156,7 +213,10 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w500),
+          ),
         ],
       ),
     );
@@ -177,11 +237,19 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
             fontWeight: FontWeight.w900,
           ),
         ),
-        shape: const Border(bottom: BorderSide(color: Colors.black, width: 2)),
+        shape: const Border(
+          bottom: BorderSide(
+            color: Colors.black,
+            width: 2,
+          ),
+        ),
       ),
       body: user == null
           ? const Center(
-              child: Text('Iniciá sesión', style: TextStyle(fontWeight: FontWeight.w900)),
+              child: Text(
+                'Iniciá sesión',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
             )
           : StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
               stream: FirebaseFirestore.instance
@@ -209,16 +277,24 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
 
                 if (!document.exists) {
                   return const Center(
-                    child: Text('Oferta no encontrada', style: TextStyle(fontWeight: FontWeight.w900)),
+                    child: Text(
+                      'Oferta no encontrada',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
                   );
                 }
 
                 final offer = document.data()!;
                 final active = offer['isActive'] == true;
-                
-                // Extraemos el logo y nombre de la empresa de la oferta
-                final logoUrl = offer['logoUrl']?.toString().trim() ?? '';
-                final companyName = offer['companyName']?.toString().trim() ?? 'Empresa No Especificada';
+
+                final logoUrl =
+                    offer['logoUrl']?.toString().trim() ?? '';
+
+                final companyName =
+                    offer['companyName']?.toString().trim() ??
+                        'Empresa No Especificada';
 
                 String value(String field) {
                   final text =
@@ -234,36 +310,57 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // TARJETA PRINCIPAL CON LOGO Y TÍTULO
+                      // TARJETA PRINCIPAL
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          border: Border.all(color: Colors.black, width: 2),
-                          boxShadow: const [BoxShadow(color: Colors.black, offset: Offset(4, 4))],
+                          border: Border.all(
+                            color: Colors.black,
+                            width: 2,
+                          ),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black,
+                              offset: Offset(4, 4),
+                            ),
+                          ],
                         ),
                         child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment:
+                              CrossAxisAlignment.start,
                           children: [
                             if (logoUrl.isNotEmpty) ...[
                               Container(
                                 width: 60,
                                 height: 60,
                                 decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.black, width: 2),
+                                  border: Border.all(
+                                    color: Colors.black,
+                                    width: 2,
+                                  ),
                                   color: const Color(0xFFF4F4F4),
                                 ),
                                 child: Image.network(
                                   logoUrl,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.business, size: 30),
+                                  errorBuilder: (
+                                    context,
+                                    error,
+                                    stackTrace,
+                                  ) =>
+                                      const Icon(
+                                    Icons.business,
+                                    size: 30,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 16),
                             ],
                             Expanded(
                               child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     value('title').toUpperCase(),
@@ -359,6 +456,7 @@ class _JobOfferDetailScreenState extends State<JobOfferDetailScreen> {
                                 ),
                               ),
                       ),
+
                       const SizedBox(height: 20),
                     ],
                   ),

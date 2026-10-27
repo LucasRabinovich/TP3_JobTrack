@@ -48,3 +48,13 @@ app.*.map.json
 .widget_preview/
 
 .vscode/
+
+.env
+
+
+# Configuración local
+.env
+
+# Credenciales y herramientas administrativas de Firebase
+/firebase-admin-tools/
+*service-account*.json

@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,6 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class DocumentsScreen extends StatefulWidget {
   const DocumentsScreen({super.key});
@@ -19,15 +19,15 @@ class DocumentsScreen extends StatefulWidget {
 class _DocumentsScreenState extends State<DocumentsScreen> {
   static const Color lime = Color(0xFFD4FF00);
   static const Color background = Color(0xFFF4F4F4);
-
-  static const int chunkSize = 180 * 1024;
   static const int maxFileSize = 3 * 1024 * 1024;
 
   bool _busy = false;
-  double _progress = 0;
 
   CollectionReference<Map<String, dynamic>> get _documents =>
       FirebaseFirestore.instance.collection('documents');
+
+  SupabaseStorageClient get _storage =>
+      Supabase.instance.client.storage;
 
   String? get _userId => FirebaseAuth.instance.currentUser?.uid;
 
@@ -49,13 +49,16 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     return '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
   }
 
+  bool _isSupabaseDocument(Map<String, dynamic> data) {
+    return data['storageType'] == 'supabase';
+  }
+
   Future<void> _uploadCv() async {
     final uid = _userId;
 
     if (uid == null || _busy) return;
 
-    DocumentReference<Map<String, dynamic>>? documentRef;
-    bool documentCreated = false;
+    String? uploadedPath;
 
     try {
       final List<PlatformFile> files = await FilePicker.pickFiles(
@@ -85,91 +88,79 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
 
       if (!mounted) return;
 
-      setState(() {
-        _busy = true;
-        _progress = 0;
-      });
+      setState(() => _busy = true);
 
       final existing = await _documents
           .where('userId', isEqualTo: uid)
           .get();
 
-      documentRef = _documents.doc();
+      final hasValidPrimary = existing.docs.any((document) {
+        final data = document.data();
 
-      final totalChunks = (bytes.length / chunkSize).ceil();
+        return _isSupabaseDocument(data) &&
+            data['isPrimary'] == true;
+      });
 
-      // PASO 1: crear el documento principal.
+      final documentRef = _documents.doc();
+
+      uploadedPath = '$uid/${documentRef.id}.pdf';
+
+      await _storage.from('cvs').uploadBinary(
+        uploadedPath,
+        bytes,
+        fileOptions: const FileOptions(
+          contentType: 'application/pdf',
+          upsert: false,
+        ),
+      );
+
       await documentRef.set({
         'userId': uid,
         'name': file.name,
         'size': bytes.length,
-        'chunkCount': totalChunks,
-        'isPrimary': existing.docs.isEmpty,
+        'isPrimary': !hasValidPrimary,
         'createdAt': FieldValue.serverTimestamp(),
-        'storageType': 'firestore',
+        'storageType': 'supabase',
+        'storagePath': uploadedPath,
         'type': 'cv',
       });
 
-      documentCreated = true;
+      // Si no había un CV válido como principal,
+      // quitamos esa marca de los documentos anteriores.
+      if (!hasValidPrimary) {
+        final batch = FirebaseFirestore.instance.batch();
 
-      // PASO 2: guardar los fragmentos.
-      // Se usa un batch por fragmento para evitar
-      // superar los límites de evaluación de reglas.
-      for (int i = 0; i < totalChunks; i++) {
-        final start = i * chunkSize;
-        final end = min(start + chunkSize, bytes.length);
-
-        final chunkBytes = Uint8List.fromList(
-          bytes.sublist(start, end),
-        );
-
-        final chunkId = i.toString().padLeft(4, '0');
-
-        await documentRef.collection('chunks').doc(chunkId).set({
-          'data': Blob(chunkBytes),
-          'index': i,
-        });
-
-        if (mounted) {
-          setState(() {
-            _progress = (i + 1) / totalChunks;
-          });
+        for (final document in existing.docs) {
+          if (document.data()['isPrimary'] == true) {
+            batch.update(document.reference, {
+              'isPrimary': false,
+            });
+          }
         }
+
+        await batch.commit();
       }
 
-      _showMessage('CV cargado correctamente.');
+      _showMessage('CV cargado correctamente en Supabase.');
     } catch (e) {
-      // Si falla la carga, intentar limpiar los
-      // fragmentos y el documento incompleto.
-      if (documentCreated && documentRef != null) {
+      if (uploadedPath != null) {
         try {
-          final chunks = await documentRef.collection('chunks').get();
-
-          for (final chunk in chunks.docs) {
-            await chunk.reference.delete();
-          }
-
-          await documentRef.delete();
+          await _storage.from('cvs').remove([uploadedPath]);
         } catch (_) {
-          // La limpieza puede fallar por permisos o red.
+          // Si falla la limpieza, el archivo puede
+          // requerir revisión manual.
         }
       }
 
       _showMessage('Error al cargar CV: $e');
     } finally {
       if (mounted) {
-        setState(() {
-          _busy = false;
-          _progress = 0;
-        });
+        setState(() => _busy = false);
       }
     }
   }
 
-  Future<void> _openCv(
-    String documentId,
-    Map<String, dynamic> data,
-  ) async {
+  Future<void> _openCv(String documentId) async {
     final uid = _userId;
 
     if (uid == null || _busy) return;
@@ -177,49 +168,30 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     setState(() => _busy = true);
 
     try {
-      final documentRef = _documents.doc(documentId);
-      final document = await documentRef.get();
+      final document = await _documents.doc(documentId).get();
 
       if (!document.exists || document.data()?['userId'] != uid) {
         throw Exception('Documento no autorizado.');
       }
 
-      final chunkCount =
-          (document.data()?['chunkCount'] as num?)?.toInt() ?? 0;
+      final documentData = document.data()!;
 
-      if (chunkCount <= 0 || chunkCount > 18) {
-        throw Exception('Cantidad de fragmentos inválida.');
+      if (!_isSupabaseDocument(documentData)) {
+        throw Exception(
+          'Este CV todavía utiliza el almacenamiento anterior.',
+        );
       }
 
-      final builder = BytesBuilder(copy: false);
+      final path = documentData['storagePath']?.toString();
 
-      for (int i = 0; i < chunkCount; i++) {
-        final chunkId = i.toString().padLeft(4, '0');
-
-        final snapshot = await documentRef
-            .collection('chunks')
-            .doc(chunkId)
-            .get();
-
-        if (!snapshot.exists) {
-          throw Exception('Falta una parte del archivo PDF.');
-        }
-
-        final blob = snapshot.data()?['data'];
-
-        if (blob is! Blob) {
-          throw Exception(
-            'No se pudo recuperar el contenido del PDF.',
-          );
-        }
-
-        builder.add(blob.bytes);
+      if (path != '$uid/$documentId.pdf') {
+        throw Exception('Ruta del documento inválida.');
       }
 
-      final bytes = builder.takeBytes();
+      final bytes = await _storage.from('cvs').download(path!);
 
       final expectedSize =
-          (document.data()?['size'] as num?)?.toInt();
+          (documentData['size'] as num?)?.toInt();
 
       if (expectedSize != null && bytes.length != expectedSize) {
         throw Exception('El archivo descargado está incompleto.');
@@ -261,8 +233,18 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
           .where('userId', isEqualTo: uid)
           .get();
 
-      if (!documents.docs.any((doc) => doc.id == documentId)) {
+      final selected = documents.docs.where(
+        (document) => document.id == documentId,
+      );
+
+      if (selected.isEmpty) {
         throw Exception('El CV no pertenece a tu cuenta.');
+      }
+
+      if (!_isSupabaseDocument(selected.first.data())) {
+        throw Exception(
+          'No podés seleccionar un CV del sistema anterior.',
+        );
       }
 
       final batch = FirebaseFirestore.instance.batch();
@@ -296,6 +278,8 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
         title: const Text('ELIMINAR CV'),
         content: const Text(
           '¿Querés eliminar este CV? '
+          'Si lo usaste en una postulación, '
+          'la empresa ya no podrá abrirlo. '
           'Esta acción no se puede deshacer.',
         ),
         actions: [
@@ -323,16 +307,24 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
         throw Exception('Documento no autorizado.');
       }
 
-      final wasPrimary = document.data()?['isPrimary'] == true;
+      final data = document.data()!;
 
-      final chunks = await documentRef.collection('chunks').get();
-
-      // Eliminar primero los fragmentos.
-      for (final chunk in chunks.docs) {
-        await chunk.reference.delete();
+      if (!_isSupabaseDocument(data)) {
+        throw Exception(
+          'Este CV todavía utiliza el almacenamiento anterior.',
+        );
       }
 
-      // Eliminar después el documento principal.
+      final path = data['storagePath']?.toString();
+
+      if (path != '$uid/$documentId.pdf') {
+        throw Exception('Ruta del documento inválida.');
+      }
+
+      final wasPrimary = data['isPrimary'] == true;
+
+      await _storage.from('cvs').remove([path!]);
+
       await documentRef.delete();
 
       if (wasPrimary) {
@@ -340,18 +332,34 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
             .where('userId', isEqualTo: uid)
             .get();
 
-        if (remaining.docs.isNotEmpty) {
-          final primaryBatch = FirebaseFirestore.instance.batch();
+        final validDocuments = remaining.docs.where(
+          (document) =>
+              _isSupabaseDocument(document.data()),
+        ).toList();
 
-          for (int i = 0; i < remaining.docs.length; i++) {
-            primaryBatch.update(
-              remaining.docs[i].reference,
-              {'isPrimary': i == 0},
-            );
-          }
+        validDocuments.sort((a, b) {
+          final aDate = a.data()['createdAt'] as Timestamp?;
+          final bDate = b.data()['createdAt'] as Timestamp?;
 
-          await primaryBatch.commit();
+          return (bDate?.toDate() ?? DateTime(1970))
+              .compareTo(
+            aDate?.toDate() ?? DateTime(1970),
+          );
+        });
+
+        final newPrimaryId = validDocuments.isEmpty
+            ? null
+            : validDocuments.first.id;
+
+        final batch = FirebaseFirestore.instance.batch();
+
+        for (final document in remaining.docs) {
+          batch.update(document.reference, {
+            'isPrimary': document.id == newPrimaryId,
+          });
         }
+
+        await batch.commit();
       }
 
       _showMessage('CV eliminado correctamente.');
@@ -371,7 +379,8 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
 
     final name = data['name']?.toString() ?? 'Documento PDF';
     final size = (data['size'] as num?)?.toInt() ?? 0;
-    final isPrimary = data['isPrimary'] == true;
+    final isSupabase = _isSupabaseDocument(data);
+    final isPrimary = data['isPrimary'] == true && isSupabase;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 18),
@@ -425,19 +434,29 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
               ),
             ),
           ],
+          if (!isSupabase) ...[
+            const SizedBox(height: 12),
+            const Text(
+              'CV DEL SISTEMA ANTERIOR',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 11,
+              ),
+            ),
+          ],
           const SizedBox(height: 14),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
               OutlinedButton.icon(
-                onPressed: _busy
+                onPressed: _busy || !isSupabase
                     ? null
-                    : () => _openCv(document.id, data),
+                    : () => _openCv(document.id),
                 icon: const Icon(Icons.open_in_new),
                 label: const Text('ABRIR'),
               ),
-              if (!isPrimary)
+              if (!isPrimary && isSupabase)
                 OutlinedButton.icon(
                   onPressed: _busy
                       ? null
@@ -446,7 +465,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                   label: const Text('HACER PRINCIPAL'),
                 ),
               OutlinedButton.icon(
-                onPressed: _busy
+                onPressed: _busy || !isSupabase
                     ? null
                     : () => _deleteCv(document.id),
                 icon: const Icon(Icons.delete_outline),
@@ -522,8 +541,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                   ),
                   if (_busy) ...[
                     const SizedBox(height: 16),
-                    LinearProgressIndicator(
-                      value: _progress > 0 ? _progress : null,
+                    const LinearProgressIndicator(
                       color: Colors.black,
                     ),
                   ],
@@ -551,7 +569,8 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                           );
                         }
 
-                        final documents = snapshot.data!.docs.toList();
+                        final documents =
+                            snapshot.data!.docs.toList();
 
                         documents.sort((a, b) {
                           final aDate =
@@ -594,4 +613,3 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     );
   }
 }
-

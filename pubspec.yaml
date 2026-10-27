@@ -1,3 +1,4 @@
+
 name: job_track
 description: "A new Flutter project."
 publish_to: 'none'
@@ -15,8 +16,10 @@ dependencies:
   fl_chart: ^1.2.0
   flutter:
     sdk: flutter
+  flutter_dotenv: ^6.0.1
   open_filex: ^5.0.0
   path_provider: ^2.1.6
+  supabase_flutter: ^2.18.3
   url_launcher: ^6.3.3
 
 dev_dependencies:
@@ -26,3 +29,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - .env
+
