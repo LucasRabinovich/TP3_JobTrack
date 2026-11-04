@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -16,7 +17,8 @@ class InterviewDetailScreen extends StatefulWidget {
       _InterviewDetailScreenState();
 }
 
-class _InterviewDetailScreenState extends State<InterviewDetailScreen> {
+class _InterviewDetailScreenState
+    extends State<InterviewDetailScreen> {
   static const Color lime = Color(0xFFD4FF00);
 
   final TextEditingController _notesController =
@@ -24,7 +26,6 @@ class _InterviewDetailScreenState extends State<InterviewDetailScreen> {
 
   bool _isSaving = false;
   bool _notesInitialized = false;
-  String _attendanceStatus = 'PENDIENTE';
 
   @override
   void dispose() {
@@ -49,11 +50,24 @@ class _InterviewDetailScreenState extends State<InterviewDetailScreen> {
     setState(() => _isSaving = true);
 
     try {
-      await FirebaseFirestore.instance
+      final ref = FirebaseFirestore.instance
           .collection('interviews')
-          .doc(widget.interviewId)
-          .update({
-        'attendanceStatus': _attendanceStatus,
+          .doc(widget.interviewId);
+
+      final document = await ref.get();
+
+      if (!document.exists) {
+        throw Exception('La entrevista ya no existe.');
+      }
+
+      final data = document.data()!;
+      final user = FirebaseAuth.instance.currentUser;
+
+      if (user == null || data['userId'] != user.uid) {
+        throw Exception('No tenés acceso a esta entrevista.');
+      }
+
+      await ref.update({
         'candidateNotes': _notesController.text.trim(),
         'candidateUpdatedAt': FieldValue.serverTimestamp(),
       });
@@ -62,7 +76,7 @@ class _InterviewDetailScreenState extends State<InterviewDetailScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Cambios guardados correctamente'),
+          content: Text('Notas guardadas correctamente'),
         ),
       );
     } catch (e) {
@@ -87,7 +101,10 @@ class _InterviewDetailScreenState extends State<InterviewDetailScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: Colors.black, width: 2),
+        border: Border.all(
+          color: Colors.black,
+          width: 2,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -116,7 +133,9 @@ class _InterviewDetailScreenState extends State<InterviewDetailScreen> {
       appBar: AppBar(
         backgroundColor: lime,
         centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.black),
+        iconTheme: const IconThemeData(
+          color: Colors.black,
+        ),
         title: const Text(
           'DETALLE DE ENTREVISTA',
           style: TextStyle(
@@ -127,7 +146,9 @@ class _InterviewDetailScreenState extends State<InterviewDetailScreen> {
         ),
       ),
       body: user == null
-          ? const Center(child: Text('Iniciá sesión'))
+          ? const Center(
+              child: Text('Iniciá sesión'),
+            )
           : StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
               stream: FirebaseFirestore.instance
                   .collection('interviews')
@@ -160,25 +181,15 @@ class _InterviewDetailScreenState extends State<InterviewDetailScreen> {
 
                 if (data['userId'] != user.uid) {
                   return const Center(
-                    child: Text('No tenés acceso a esta entrevista'),
+                    child: Text(
+                      'No tenés acceso a esta entrevista',
+                    ),
                   );
                 }
 
                 if (!_notesInitialized) {
                   _notesController.text =
                       (data['candidateNotes'] ?? '').toString();
-
-                  final savedStatus =
-                      (data['attendanceStatus'] ?? 'PENDIENTE')
-                          .toString();
-
-                  _attendanceStatus = [
-                    'PENDIENTE',
-                    'CONFIRMADA',
-                    'REPROGRAMACION_SOLICITADA',
-                  ].contains(savedStatus)
-                      ? savedStatus
-                      : 'PENDIENTE';
 
                   _notesInitialized = true;
                 }
@@ -189,23 +200,37 @@ class _InterviewDetailScreenState extends State<InterviewDetailScreen> {
                 final company =
                     (data['company'] ?? 'Sin empresa').toString();
 
-                final role =
-                    (data['role'] ?? 'Sin puesto').toString();
+                final role = (data['position'] ??
+                        data['role'] ??
+                        'Sin puesto')
+                    .toString();
 
                 final platform =
-                    (data['platform'] ?? 'No especificada').toString();
+                    (data['platform'] ?? 'No especificada')
+                        .toString();
 
-                final type =
-                    (data['type'] ?? 'No especificado').toString();
+                final type = (data['type'] ??
+                        data['modality'] ??
+                        'No especificado')
+                    .toString();
 
                 final interviewer =
                     (data['interviewer'] ?? '').toString();
 
                 final link =
                     (data['link'] ?? '').toString();
-                    
-                final companyNotes = 
-                    (data['notes'] ?? '').toString(); // Extraemos las notas de la empresa
+
+                final companyNotes =
+                    (data['notes'] ?? '').toString();
+
+                final decision =
+                    (data['decisionStatus'] ?? '')
+                        .toString()
+                        .toUpperCase();
+
+                final isAccepted = decision == 'ACEPTADO';
+                final isRejected = decision == 'RECHAZADO';
+                final hasDecision = isAccepted || isRejected;
 
                 return SingleChildScrollView(
                   padding: const EdgeInsets.all(20),
@@ -220,39 +245,112 @@ class _InterviewDetailScreenState extends State<InterviewDetailScreen> {
                           fontWeight: FontWeight.w900,
                         ),
                       ),
+
                       const SizedBox(height: 6),
+
                       Text(
                         role,
-                        style: const TextStyle(fontSize: 17),
+                        style: const TextStyle(
+                          fontSize: 17,
+                        ),
                       ),
+
                       const SizedBox(height: 24),
+
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        margin: const EdgeInsets.only(bottom: 20),
+                        decoration: BoxDecoration(
+                          color: isAccepted
+                              ? lime
+                              : isRejected
+                                  ? const Color(0xFFFFA6A6)
+                                  : Colors.white,
+                          border: Border.all(
+                            color: Colors.black,
+                            width: 2,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment:
+                              CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'ESTADO DEL PROCESO',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              hasDecision
+                                  ? decision
+                                  : 'ENTREVISTA PROGRAMADA',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            if (hasDecision) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                isAccepted
+                                    ? 'La empresa aceptó tu postulación.'
+                                    : 'La empresa rechazó tu postulación.',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
 
                       _infoBox(
                         'FECHA',
                         date == null
-                            ? (data['dateString'] ?? 'No disponible').toString() // Fallback a dateString por si se programó desde la nueva función
+                            ? (data['dateString'] ??
+                                    'No disponible')
+                                .toString()
                             : _formatDate(date),
                       ),
 
+                      if (date != null)
+                        _infoBox(
+                          'HORA',
+                          _formatTime(date),
+                        ),
+
                       _infoBox(
-                        'HORA',
-                        date == null
-                            ? 'Ver fecha'
-                            : _formatTime(date),
+                        'TIPO DE ENTREVISTA',
+                        type,
                       ),
 
-                      _infoBox('TIPO DE ENTREVISTA', type != 'No especificado' ? type : (data['modality'] ?? 'No especificado').toString()), // Fallback a modality
-                      _infoBox('PLATAFORMA', platform),
+                      if (platform != 'No especificada')
+                        _infoBox(
+                          'PLATAFORMA',
+                          platform,
+                        ),
 
                       if (interviewer.isNotEmpty)
-                        _infoBox('ENTREVISTADOR', interviewer),
+                        _infoBox(
+                          'ENTREVISTADOR',
+                          interviewer,
+                        ),
 
-                      // ACÁ MOSTRAMOS LAS NOTAS DE LA EMPRESA
                       if (companyNotes.isNotEmpty)
-                        _infoBox('INSTRUCCIONES DE LA EMPRESA', companyNotes),
+                        _infoBox(
+                          'INSTRUCCIONES DE LA EMPRESA',
+                          companyNotes,
+                        ),
 
                       if (link.isNotEmpty) ...[
-                        _infoBox('LINK / DIRECCIÓN', link),
+                        _infoBox(
+                          'LINK / DIRECCIÓN',
+                          link,
+                        ),
                         TextButton.icon(
                           onPressed: () async {
                             await Clipboard.setData(
@@ -276,61 +374,13 @@ class _InterviewDetailScreenState extends State<InterviewDetailScreen> {
                       const SizedBox(height: 20),
 
                       const Text(
-                        'MI ASISTENCIA',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-
-                      DropdownButtonFormField<String>(
-                        key: ValueKey(_attendanceStatus),
-                        initialValue: _attendanceStatus,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          filled: true,
-                          fillColor: Colors.white,
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.zero,
-                            borderSide: BorderSide(
-                              color: Colors.black,
-                              width: 2,
-                            ),
-                          ),
-                        ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'PENDIENTE',
-                            child: Text('PENDIENTE'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'CONFIRMADA',
-                            child: Text('CONFIRMAR ASISTENCIA'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'REPROGRAMACION_SOLICITADA',
-                            child: Text('SOLICITAR REPROGRAMACIÓN'),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() {
-                              _attendanceStatus = value;
-                            });
-                          }
-                        },
-                      ),
-
-                      const SizedBox(height: 28),
-
-                      const Text(
                         'MIS NOTAS PERSONALES',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
+
                       const SizedBox(height: 8),
 
                       TextField(
@@ -362,8 +412,9 @@ class _InterviewDetailScreenState extends State<InterviewDetailScreen> {
                       const SizedBox(height: 32),
 
                       ElevatedButton(
-                        onPressed:
-                            _isSaving ? null : _saveChanges,
+                        onPressed: _isSaving
+                            ? null
+                            : _saveChanges,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: lime,
                           foregroundColor: Colors.black,
@@ -381,7 +432,7 @@ class _InterviewDetailScreenState extends State<InterviewDetailScreen> {
                                 color: Colors.black,
                               )
                             : const Text(
-                                'GUARDAR CAMBIOS',
+                                'GUARDAR NOTAS',
                                 style: TextStyle(
                                   fontWeight: FontWeight.w900,
                                 ),

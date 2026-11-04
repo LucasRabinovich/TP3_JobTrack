@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -9,11 +10,10 @@ class StatisticsScreen extends StatelessWidget {
   static const Color lime = Color(0xFFD4FF00);
   static const Color background = Color(0xFFF4F4F4);
 
-  
-  static const Color colorRechazados = Color(0xFFFFA6A6); 
-  static const Color colorEntrevistas = lime;            
-  static const Color colorPostulados = Color(0xFF00FFFF); 
-  static const Color colorAceptados = Colors.black;       
+  static const Color colorRechazados = Color(0xFFFFA6A6);
+  static const Color colorEntrevistas = lime;
+  static const Color colorPostulados = Color(0xFF00FFFF);
+  static const Color colorAceptados = Colors.black;
 
   BoxDecoration _brutalBox() {
     return BoxDecoration(
@@ -35,7 +35,12 @@ class StatisticsScreen extends StatelessWidget {
 
     if (user == null) {
       return const Scaffold(
-        body: Center(child: Text('NO HAY USUARIO', style: TextStyle(fontWeight: FontWeight.w900))),
+        body: Center(
+          child: Text(
+            'NO HAY USUARIO',
+            style: TextStyle(fontWeight: FontWeight.w900),
+          ),
+        ),
       );
     }
 
@@ -45,12 +50,24 @@ class StatisticsScreen extends StatelessWidget {
         backgroundColor: background,
         elevation: 0,
         centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.black, size: 30),
+        iconTheme: const IconThemeData(
+          color: Colors.black,
+          size: 30,
+        ),
         title: const Text(
           'JOB TRACKER',
-          style: TextStyle(fontWeight: FontWeight.w900, color: Colors.black, letterSpacing: 1),
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            color: Colors.black,
+            letterSpacing: 1,
+          ),
         ),
-        shape: const Border(bottom: BorderSide(color: Colors.black, width: 2)),
+        shape: const Border(
+          bottom: BorderSide(
+            color: Colors.black,
+            width: 2,
+          ),
+        ),
       ),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: FirebaseFirestore.instance
@@ -58,13 +75,31 @@ class StatisticsScreen extends StatelessWidget {
             .where('userId', isEqualTo: user.uid)
             .snapshots(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: Colors.black));
+          if (snapshot.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Text(
+                  'ERROR AL CARGAR ESTADÍSTICAS\n${snapshot.error}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            );
           }
 
-          final docs = snapshot.data?.docs ?? [];
+          if (!snapshot.hasData) {
+            return const Center(
+              child: CircularProgressIndicator(
+                color: Colors.black,
+              ),
+            );
+          }
 
-          
+          final docs = snapshot.data!.docs;
+
           int rechazados = 0;
           int entrevistas = 0;
           int postulados = 0;
@@ -74,10 +109,10 @@ class StatisticsScreen extends StatelessWidget {
 
           for (var doc in docs) {
             final data = doc.data();
-            
-            final status = (data['status'] ?? '').toString().toUpperCase();
-            
-            
+
+            final status =
+                (data['status'] ?? '').toString().toUpperCase();
+
             if (status == 'RECHAZADO') {
               rechazados++;
             } else if (status == 'ENTREVISTA') {
@@ -89,18 +124,21 @@ class StatisticsScreen extends StatelessWidget {
             }
 
             DateTime date;
-            if (data['createdAt'] != null && data['createdAt'] is Timestamp) {
+
+            if (data['createdAt'] is Timestamp) {
               date = (data['createdAt'] as Timestamp).toDate();
-            } else if (data['date'] != null && data['date'] is Timestamp) {
+            } else if (data['date'] is Timestamp) {
               date = (data['date'] as Timestamp).toDate();
             } else {
               date = DateTime.now();
             }
-            
-            postulacionesPorMes[date.month] = (postulacionesPorMes[date.month] ?? 0) + 1;
+
+            postulacionesPorMes[date.month] =
+                (postulacionesPorMes[date.month] ?? 0) + 1;
           }
 
-          final int totalPostulaciones = rechazados + entrevistas + postulados + aceptados;
+          final int totalPostulaciones =
+              rechazados + entrevistas + postulados + aceptados;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20),
@@ -109,24 +147,32 @@ class StatisticsScreen extends StatelessWidget {
               children: [
                 const Text(
                   'ESTADÍSTICAS',
-                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: 1),
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Métricas y rendimiento de tu búsqueda.',
                   style: TextStyle(
-                    fontSize: 14, 
-                    color: Colors.grey[700], 
-                    fontFamily: 'monospace', 
+                    fontSize: 14,
+                    color: Colors.grey[700],
+                    fontFamily: 'monospace',
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Divider(color: Colors.black, thickness: 3, height: 0),
+                const Divider(
+                  color: Colors.black,
+                  thickness: 3,
+                  height: 0,
+                ),
                 const SizedBox(height: 24),
 
                 SizedBox(
-                  height: 480, 
+                  height: 480,
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -137,22 +183,33 @@ class StatisticsScreen extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildCardTitle('POSTULACIONES\nPOR MES'),
+                              _buildCardTitle(
+                                'POSTULACIONES\nPOR MES',
+                              ),
                               const SizedBox(height: 12),
-                              const Divider(color: Colors.black, thickness: 1.5, height: 0),
+                              const Divider(
+                                color: Colors.black,
+                                thickness: 1.5,
+                                height: 0,
+                              ),
                               const SizedBox(height: 20),
                               Expanded(
                                 child: Container(
                                   color: Colors.grey[100],
-                                  padding: const EdgeInsets.only(top: 16, right: 8),
-                                  child: _buildBarChart(postulacionesPorMes),
+                                  padding: const EdgeInsets.only(
+                                    top: 16,
+                                    right: 8,
+                                  ),
+                                  child: _buildBarChart(
+                                    postulacionesPorMes,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                         ),
                       ),
-                      
+
                       const SizedBox(width: 16),
 
                       Expanded(
@@ -162,41 +219,75 @@ class StatisticsScreen extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildCardTitle('ESTADO\nGLOBAL\n(HISTÓRICO)'),
-                              const SizedBox(height: 12),
-                              const Divider(color: Colors.black, thickness: 1.5, height: 0),
-                              const SizedBox(height: 24),
-                              
-                              SizedBox(
-                                height: 140, 
-                                child: _buildDonutChart(rechazados, entrevistas, postulados, aceptados, totalPostulaciones),
+                              _buildCardTitle(
+                                'ESTADO\nGLOBAL\n(HISTÓRICO)',
                               ),
-                              
+                              const SizedBox(height: 12),
+                              const Divider(
+                                color: Colors.black,
+                                thickness: 1.5,
+                                height: 0,
+                              ),
                               const SizedBox(height: 24),
-                              const Divider(color: Colors.black, thickness: 1, height: 0),
+
+                              SizedBox(
+                                height: 140,
+                                child: _buildDonutChart(
+                                  rechazados,
+                                  entrevistas,
+                                  postulados,
+                                  aceptados,
+                                  totalPostulaciones,
+                                ),
+                              ),
+
+                              const SizedBox(height: 24),
+                              const Divider(
+                                color: Colors.black,
+                                thickness: 1,
+                                height: 0,
+                              ),
                               const SizedBox(height: 16),
-                              
+
                               Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
                                 children: [
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        
-                                        _buildLegendItem(colorPostulados, 'Postulados', postulados),
+                                        _buildLegendItem(
+                                          colorPostulados,
+                                          'Postulados',
+                                          postulados,
+                                        ),
                                         const SizedBox(height: 12),
-                                        _buildLegendItem(colorRechazados, 'Rechazados', rechazados),
+                                        _buildLegendItem(
+                                          colorRechazados,
+                                          'Rechazados',
+                                          rechazados,
+                                        ),
                                       ],
                                     ),
                                   ),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        _buildLegendItem(colorEntrevistas, 'Entrevistas', entrevistas),
+                                        _buildLegendItem(
+                                          colorEntrevistas,
+                                          'Entrevistas',
+                                          entrevistas,
+                                        ),
                                         const SizedBox(height: 12),
-                                        _buildLegendItem(colorAceptados, 'Aceptados', aceptados),
+                                        _buildLegendItem(
+                                          colorAceptados,
+                                          'Aceptados',
+                                          aceptados,
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -209,6 +300,7 @@ class StatisticsScreen extends StatelessWidget {
                     ],
                   ),
                 ),
+
                 const SizedBox(height: 40),
               ],
             ),
@@ -230,7 +322,11 @@ class StatisticsScreen extends StatelessWidget {
         ),
         Text(
           text,
-          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, height: 1.2),
+          style: const TextStyle(
+            fontWeight: FontWeight.w900,
+            fontSize: 13,
+            height: 1.2,
+          ),
         ),
       ],
     );
@@ -238,14 +334,31 @@ class StatisticsScreen extends StatelessWidget {
 
   Widget _buildBarChart(Map<int, int> datos) {
     List<BarChartGroupData> barGroups = [];
-    final mesesNombres = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    
+
+    final mesesNombres = [
+      '',
+      'Ene',
+      'Feb',
+      'Mar',
+      'Abr',
+      'May',
+      'Jun',
+      'Jul',
+      'Ago',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dic',
+    ];
+
     if (datos.isEmpty) {
-      datos = {DateTime.now().month: 0}; 
+      datos = {DateTime.now().month: 0};
     }
 
-    int maxValor = datos.isNotEmpty ? datos.values.reduce((a, b) => a > b ? a : b) : 0;
-    
+    int maxValor = datos.isNotEmpty
+        ? datos.values.reduce((a, b) => a > b ? a : b)
+        : 0;
+
     double topeY = 4.0;
     double intervalo = 1.0;
 
@@ -261,11 +374,13 @@ class StatisticsScreen extends StatelessWidget {
     }
 
     final mesesOrdenados = datos.keys.toList()..sort();
-    final mesesAMostrar = mesesOrdenados.length > 5 
-        ? mesesOrdenados.sublist(mesesOrdenados.length - 5) 
+
+    final mesesAMostrar = mesesOrdenados.length > 5
+        ? mesesOrdenados.sublist(mesesOrdenados.length - 5)
         : mesesOrdenados;
 
     int index = 0;
+
     for (int mes in mesesAMostrar) {
       barGroups.add(
         BarChartGroupData(
@@ -274,8 +389,8 @@ class StatisticsScreen extends StatelessWidget {
             BarChartRodData(
               toY: datos[mes]!.toDouble(),
               color: Colors.black,
-              width: 24, 
-              borderRadius: BorderRadius.zero, 
+              width: 24,
+              borderRadius: BorderRadius.zero,
             ),
           ],
         ),
@@ -286,16 +401,28 @@ class StatisticsScreen extends StatelessWidget {
     return BarChart(
       BarChartData(
         alignment: BarChartAlignment.spaceAround,
-        maxY: topeY, 
+        maxY: topeY,
         barTouchData: BarTouchData(
           enabled: true,
           touchTooltipData: BarTouchTooltipData(
-            getTooltipColor: (group) => Colors.black, 
-            tooltipPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+            getTooltipColor: (group) => Colors.black,
+            tooltipPadding: const EdgeInsets.symmetric(
+              horizontal: 8,
+              vertical: 4,
+            ),
+            getTooltipItem: (
+              group,
+              groupIndex,
+              rod,
+              rodIndex,
+            ) {
               return BarTooltipItem(
                 rod.toY.round().toString(),
-                const TextStyle(color: lime, fontWeight: FontWeight.w900, fontSize: 12),
+                const TextStyle(
+                  color: lime,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 12,
+                ),
               );
             },
           ),
@@ -307,13 +434,22 @@ class StatisticsScreen extends StatelessWidget {
               showTitles: true,
               getTitlesWidget: (value, meta) {
                 final int idx = value.toInt();
-                if (idx < 0 || idx >= mesesAMostrar.length) return const SizedBox();
+
+                if (idx < 0 || idx >= mesesAMostrar.length) {
+                  return const SizedBox();
+                }
+
                 final mesReal = mesesAMostrar[idx];
+
                 return Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
-                    mesesNombres[mesReal], 
-                    style: const TextStyle(fontSize: 10, fontFamily: 'monospace', fontWeight: FontWeight.bold),
+                    mesesNombres[mesReal],
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontFamily: 'monospace',
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 );
               },
@@ -323,30 +459,51 @@ class StatisticsScreen extends StatelessWidget {
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 24,
-              interval: intervalo, 
+              interval: intervalo,
               getTitlesWidget: (value, meta) {
-                if (value == 0 || value % 1 != 0) return const SizedBox();
+                if (value == 0 || value % 1 != 0) {
+                  return const SizedBox();
+                }
+
                 return Text(
-                  value.toInt().toString(), 
-                  style: const TextStyle(fontSize: 10, fontFamily: 'monospace', fontWeight: FontWeight.bold),
+                  value.toInt().toString(),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontFamily: 'monospace',
+                    fontWeight: FontWeight.bold,
+                  ),
                 );
               },
             ),
           ),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
         ),
         gridData: FlGridData(
           show: true,
-          drawVerticalLine: false, 
+          drawVerticalLine: false,
           horizontalInterval: intervalo,
-          getDrawingHorizontalLine: (value) => FlLine(color: Colors.grey[300], strokeWidth: 1.5, dashArray: [4, 4]),
+          getDrawingHorizontalLine: (value) => FlLine(
+            color: Colors.grey[300],
+            strokeWidth: 1.5,
+            dashArray: [4, 4],
+          ),
         ),
         borderData: FlBorderData(
           show: true,
           border: const Border(
-            left: BorderSide(color: Colors.black, width: 2), 
-            bottom: BorderSide(color: Colors.black, width: 2),
+            left: BorderSide(
+              color: Colors.black,
+              width: 2,
+            ),
+            bottom: BorderSide(
+              color: Colors.black,
+              width: 2,
+            ),
           ),
         ),
         barGroups: barGroups,
@@ -354,11 +511,23 @@ class StatisticsScreen extends StatelessWidget {
     );
   }
 
-  
-  Widget _buildDonutChart(int rechazados, int entrevistas, int postulados, int aceptados, int total) {
+  Widget _buildDonutChart(
+    int rechazados,
+    int entrevistas,
+    int postulados,
+    int aceptados,
+    int total,
+  ) {
     if (total == 0) {
-      
-      rechazados = 12; entrevistas = 5; postulados = 18; aceptados = 2; total = 37;
+      return const Center(
+        child: Text(
+          'SIN DATOS',
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            fontSize: 14,
+          ),
+        ),
+      );
     }
 
     return Stack(
@@ -367,38 +536,78 @@ class StatisticsScreen extends StatelessWidget {
         PieChart(
           PieChartData(
             sectionsSpace: 0,
-            centerSpaceRadius: 40, 
+            centerSpaceRadius: 40,
             startDegreeOffset: -90,
             sections: [
-              _buildPieSection(colorEntrevistas, entrevistas.toDouble()),
-              _buildPieSection(colorRechazados, rechazados.toDouble()),
-              _buildPieSection(colorAceptados, aceptados.toDouble()),
-              _buildPieSection(colorPostulados, postulados.toDouble()),
+              if (entrevistas > 0)
+                _buildPieSection(
+                  colorEntrevistas,
+                  entrevistas.toDouble(),
+                ),
+              if (rechazados > 0)
+                _buildPieSection(
+                  colorRechazados,
+                  rechazados.toDouble(),
+                ),
+              if (aceptados > 0)
+                _buildPieSection(
+                  colorAceptados,
+                  aceptados.toDouble(),
+                ),
+              if (postulados > 0)
+                _buildPieSection(
+                  colorPostulados,
+                  postulados.toDouble(),
+                ),
             ],
           ),
         ),
         Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('TOTAL', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, fontFamily: 'monospace')),
-            Text(total.toString(), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, height: 1.0)),
+            const Text(
+              'TOTAL',
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+                fontFamily: 'monospace',
+              ),
+            ),
+            Text(
+              total.toString(),
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+                height: 1.0,
+              ),
+            ),
           ],
         ),
       ],
     );
   }
 
-  PieChartSectionData _buildPieSection(Color color, double value) {
+  PieChartSectionData _buildPieSection(
+    Color color,
+    double value,
+  ) {
     return PieChartSectionData(
       color: color,
       value: value,
-      title: '', 
+      title: '',
       radius: 28,
-      borderSide: const BorderSide(color: Colors.black, width: 2), 
+      borderSide: const BorderSide(
+        color: Colors.black,
+        width: 2,
+      ),
     );
   }
 
-  Widget _buildLegendItem(Color color, String title, int count) {
+  Widget _buildLegendItem(
+    Color color,
+    String title,
+    int count,
+  ) {
     return Row(
       children: [
         Container(
@@ -406,7 +615,10 @@ class StatisticsScreen extends StatelessWidget {
           height: 14,
           decoration: BoxDecoration(
             color: color,
-            border: Border.all(color: Colors.black, width: 1.5),
+            border: Border.all(
+              color: Colors.black,
+              width: 1.5,
+            ),
           ),
         ),
         const SizedBox(width: 6),
@@ -415,14 +627,23 @@ class StatisticsScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                title, 
-                style: const TextStyle(color: Colors.black, fontSize: 9, fontWeight: FontWeight.w900, height: 1.1),
+                title,
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w900,
+                  height: 1.1,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               Text(
-                count.toString(), 
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, fontFamily: 'monospace'),
+                count.toString(),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                  fontFamily: 'monospace',
+                ),
               ),
             ],
           ),

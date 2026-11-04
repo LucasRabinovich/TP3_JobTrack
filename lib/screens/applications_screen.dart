@@ -18,6 +18,7 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   String _selectedStatus = 'TODOS';
+  bool _showHistory = false;
 
   @override
   void dispose() {
@@ -31,11 +32,43 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
     });
   }
 
+  void _selectSection(bool history) {
+    setState(() {
+      _showHistory = history;
+      _selectedStatus = 'TODOS';
+    });
+  }
+
   void _exploreOffers() {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => const JobOffersScreen(),
+      ),
+    );
+  }
+
+  Widget _buildSectionButton(String title, bool history) {
+    final selected = _showHistory == history;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _selectSection(history),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: selected ? lime : Colors.white,
+            border: Border.all(color: Colors.black, width: 2),
+          ),
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -70,15 +103,20 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
 
   Widget _buildEmptyState({
     required bool hasApplications,
+    required bool hasSectionApplications,
   }) {
     if (hasApplications) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(24),
+          padding: const EdgeInsets.all(24),
           child: Text(
-            'NO SE ENCONTRARON POSTULACIONES CON LOS FILTROS SELECCIONADOS',
+            hasSectionApplications
+                ? 'NO SE ENCONTRARON POSTULACIONES CON LOS FILTROS SELECCIONADOS'
+                : _showHistory
+                    ? 'TODAVÍA NO TENÉS POSTULACIONES EN EL HISTORIAL'
+                    : 'NO TENÉS POSTULACIONES ACTIVAS',
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -152,9 +190,17 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
   }) {
     final company = (applicationData['company'] ?? 'Sin empresa').toString();
     final role = (applicationData['role'] ?? 'Sin puesto').toString();
-    final status = (applicationData['status'] ?? 'SIN ESTADO').toString();
+    final status = (applicationData['status'] ?? 'SIN ESTADO')
+        .toString()
+        .toUpperCase();
     final modality = (applicationData['modality'] ?? '').toString();
     final salary = (applicationData['salary'] ?? '').toString();
+
+    final statusColor = status == 'ACEPTADO'
+        ? lime
+        : status == 'RECHAZADO'
+            ? const Color(0xFFFFA6A6)
+            : Colors.white;
 
     return GestureDetector(
       onTap: () {
@@ -221,14 +267,14 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: lime,
+                    color: statusColor,
                     border: Border.all(
                       color: Colors.black,
                       width: 2,
                     ),
                   ),
                   child: Text(
-                    status.toUpperCase(),
+                    status,
                     style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w900,
@@ -276,6 +322,14 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Row(
+            children: [
+              _buildSectionButton('ACTIVAS', false),
+              const SizedBox(width: 8),
+              _buildSectionButton('HISTORIAL', true),
+            ],
+          ),
+          const SizedBox(height: 20),
           TextField(
             controller: _searchController,
             onChanged: (_) {
@@ -300,11 +354,13 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
             runSpacing: 8,
             children: [
               _buildFilterButton('TODOS'),
-              _buildFilterButton('POSTULADO'),
-             
-              _buildFilterButton('ENTREVISTA'),
-              _buildFilterButton('ACEPTADO'),
-              _buildFilterButton('RECHAZADO'),
+              if (!_showHistory) ...[
+                _buildFilterButton('POSTULADO'),
+                _buildFilterButton('ENTREVISTA'),
+              ] else ...[
+                _buildFilterButton('ACEPTADO'),
+                _buildFilterButton('RECHAZADO'),
+              ],
             ],
           ),
           const SizedBox(height: 24),
@@ -321,10 +377,7 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                 : StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                     stream: FirebaseFirestore.instance
                         .collection('applications')
-                        .where(
-                          'userId',
-                          isEqualTo: user.uid,
-                        )
+                        .where('userId', isEqualTo: user.uid)
                         .snapshots(),
                     builder: (context, snapshot) {
                       if (snapshot.hasError) {
@@ -348,18 +401,41 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                       }
 
                       final docs = snapshot.data!.docs;
+                      final search = _searchController.text
+                          .trim()
+                          .toLowerCase();
 
-                      final search = _searchController.text.trim().toLowerCase();
+                      final sectionDocs = docs.where((doc) {
+                        final status = (doc.data()['status'] ?? '')
+                            .toString()
+                            .toUpperCase();
 
-                      final filteredDocs = docs.where((doc) {
+                        final isFinal = status == 'ACEPTADO' ||
+                            status == 'RECHAZADO';
+
+                        return _showHistory ? isFinal : !isFinal;
+                      }).toList();
+
+                      final filteredDocs = sectionDocs.where((doc) {
                         final data = doc.data();
 
-                        final company = (data['company'] ?? '').toString().toLowerCase();
-                        final role = (data['role'] ?? '').toString().toLowerCase();
-                        final status = (data['status'] ?? '').toString().toUpperCase();
+                        final company = (data['company'] ?? '')
+                            .toString()
+                            .toLowerCase();
+                        final role = (data['role'] ?? '')
+                            .toString()
+                            .toLowerCase();
+                        final status = (data['status'] ?? '')
+                            .toString()
+                            .toUpperCase();
 
-                        final matchesSearch = company.contains(search) || role.contains(search);
-                        final matchesStatus = _selectedStatus == 'TODOS' || status == _selectedStatus;
+                        final matchesSearch =
+                            company.contains(search) ||
+                            role.contains(search);
+
+                        final matchesStatus =
+                            _selectedStatus == 'TODOS' ||
+                            status == _selectedStatus;
 
                         return matchesSearch && matchesStatus;
                       }).toList();
@@ -367,22 +443,24 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                       filteredDocs.sort((a, b) {
                         DateTime readDate(Map<String, dynamic> data) {
                           final value = data['createdAt'] ?? data['date'];
-                          return value is Timestamp ? value.toDate() : DateTime(1970);
+                          return value is Timestamp
+                              ? value.toDate()
+                              : DateTime(1970);
                         }
 
-                        return readDate(b.data()).compareTo(readDate(a.data()));
+                        return readDate(b.data())
+                            .compareTo(readDate(a.data()));
                       });
 
                       if (filteredDocs.isEmpty) {
                         return _buildEmptyState(
                           hasApplications: docs.isNotEmpty,
+                          hasSectionApplications: sectionDocs.isNotEmpty,
                         );
                       }
 
                       return ListView.builder(
-                        padding: const EdgeInsets.only(
-                          bottom: 12,
-                        ),
+                        padding: const EdgeInsets.only(bottom: 12),
                         itemCount: filteredDocs.length,
                         itemBuilder: (context, index) {
                           final document = filteredDocs[index];

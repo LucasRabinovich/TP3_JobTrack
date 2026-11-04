@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -115,25 +114,19 @@ class _ApplicationDetailScreenState
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return const Center(
-              child: Text(
-                'No se pudo cargar la postulación.',
-              ),
+              child: Text('No se pudo cargar la postulación.'),
             );
           }
 
           if (!snapshot.hasData) {
             return const Center(
-              child: CircularProgressIndicator(
-                color: Colors.black,
-              ),
+              child: CircularProgressIndicator(color: Colors.black),
             );
           }
 
           if (!snapshot.data!.exists) {
             return const Center(
-              child: Text(
-                'La postulación ya no existe.',
-              ),
+              child: Text('La postulación ya no existe.'),
             );
           }
 
@@ -155,14 +148,24 @@ class _ApplicationDetailScreenState
               data['offerLink']?.toString() ?? '';
 
           final status =
-              data['status']?.toString().toUpperCase() ??
-                  'POSTULADO';
-
-          final isInterview =
-              status == 'ENTREVISTA' ||
-              status == 'ACEPTADO';
+              (data['status'] ?? 'POSTULADO')
+                  .toString()
+                  .toUpperCase();
 
           final isAccepted = status == 'ACEPTADO';
+          final isRejected = status == 'RECHAZADO';
+          final isInterview = status == 'ENTREVISTA';
+
+          final hasInterview = isInterview ||
+              isAccepted ||
+              (isRejected &&
+                  data['interviewScheduled'] == true);
+
+          final statusColor = isAccepted
+              ? const Color(0xFFD4FF00)
+              : isRejected
+                  ? const Color(0xFFFFA6A6)
+                  : Colors.white;
 
           return SafeArea(
             child: SingleChildScrollView(
@@ -191,9 +194,62 @@ class _ApplicationDetailScreenState
 
                   const SizedBox(height: 24),
 
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: statusColor,
+                      border: Border.all(
+                        color: Colors.black,
+                        width: 2,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'ESTADO DE LA POSTULACIÓN',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          status,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        if (isAccepted || isRejected) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            isAccepted
+                                ? 'La empresa aceptó tu postulación. Podés consultar este proceso en tu historial.'
+                                : 'La empresa rechazó tu postulación. Podés consultar este proceso en tu historial.',
+                            style: const TextStyle(
+                              fontSize: 13,
+                            ),
+                          ),
+                        ] else if (isInterview) ...[
+                          const SizedBox(height: 8),
+                          const Text(
+                            'La empresa programó una entrevista. Revisá la sección Mis Entrevistas para consultar los detalles.',
+                            style: TextStyle(fontSize: 13),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
                   _buildInfoBox(
                     title: 'FECHA',
-                    value: _formatDate(data['date']),
+                    value: _formatDate(
+                      data['createdAt'] ?? data['date'],
+                    ),
                   ),
 
                   const SizedBox(height: 12),
@@ -278,7 +334,7 @@ class _ApplicationDetailScreenState
 
                   _buildTimelineItem(
                     title: 'ENTREVISTA',
-                    active: isInterview,
+                    active: hasInterview,
                   ),
 
                   _buildTimelineItem(
@@ -286,7 +342,7 @@ class _ApplicationDetailScreenState
                     active: isAccepted,
                   ),
 
-                  if (status == 'RECHAZADO')
+                  if (isRejected)
                     _buildTimelineItem(
                       title: 'RECHAZADO',
                       active: true,
@@ -364,9 +420,7 @@ class _ApplicationDetailScreenState
               letterSpacing: 1,
             ),
           ),
-
           const SizedBox(height: 6),
-
           Text(
             value,
             style: const TextStyle(
@@ -400,7 +454,6 @@ class _ApplicationDetailScreenState
                 ),
               ),
             ),
-
             Container(
               width: 2,
               height: 34,
@@ -408,9 +461,7 @@ class _ApplicationDetailScreenState
             ),
           ],
         ),
-
         const SizedBox(width: 12),
-
         Padding(
           padding: const EdgeInsets.only(top: 1),
           child: Text(
@@ -426,4 +477,5 @@ class _ApplicationDetailScreenState
     );
   }
 }
+
 
