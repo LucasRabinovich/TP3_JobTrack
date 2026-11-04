@@ -1,3 +1,6 @@
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'package:job_track/screens/forgot_password_screen.dart';
@@ -83,6 +86,34 @@ class _LoginScreenState extends State<LoginScreen> {
         password,
       );
 
+      final user = FirebaseAuth.instance.currentUser;
+
+      if (user == null) {
+        throw Exception('No se pudo obtener el usuario');
+      }
+
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      final role = userDoc.data()?['role'];
+
+      if (role != 'candidato') {
+        await _authService.signOut();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Acceso denegado. Esta aplicación es solo para candidatos.',
+              ),
+            ),
+          );
+        }
+        return;
+      }
+
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -91,12 +122,24 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
       }
-    } catch (e) {
+    } on FirebaseAuthException {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
               'Email o contraseña incorrectos',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      await _authService.signOut();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No se pudo verificar el rol del usuario. Intenta nuevamente.',
             ),
           ),
         );
